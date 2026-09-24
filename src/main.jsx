@@ -114,6 +114,7 @@ function Header() {
 
         <div className="headerSearch">
           <Search size={15} />
+
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -123,6 +124,7 @@ function Header() {
             }
             placeholder="Search your objects..."
           />
+
           <kbd>⌘K</kbd>
         </div>
 
@@ -193,15 +195,38 @@ function Login() {
 
   const [form, setForm] = useState({
     name: '',
-    email: 'demo@objectmemory.local',
-    password: 'demo123',
+    email: '',
+    password: '',
   });
 
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const login = async (values) => {
+    setError('');
+    setBusy(true);
+
+    try {
+      const d = await api('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+
+      localStorage.setItem('om_token', d.token);
+      localStorage.setItem('om_user', JSON.stringify(d.user));
+
+      nav('/');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setError('');
+    setBusy(true);
 
     try {
       const d = await api('/auth/' + mode, {
@@ -215,111 +240,200 @@ function Login() {
       nav('/');
     } catch (e) {
       setError(e.message);
+    } finally {
+      setBusy(false);
     }
   };
 
-  return (
-    <div className="auth">
-      <div className="authPanel">
-        <Logo />
+  const demo = () =>
+    login({
+      email: 'demo@objectmemory.local',
+      password: 'demo123',
+    });
 
-        <div className="authEyebrow">
-          PRIVATE OBJECT MEMORY
+  return (
+    <div className="authSplit">
+      <section className="authStory">
+        <div className="authStoryTop">
+          <Logo />
         </div>
 
-        <h1>
-          {mode === 'login'
-            ? 'Welcome back.'
-            : 'Create your memory.'}
-        </h1>
+        <div className="authStoryMain">
+          <div className="authStoryEyebrow">
+            A PRIVATE ARCHIVE FOR THE THINGS THAT MATTER
+          </div>
 
-        <p className="authIntro">
-          Your things have stories. Keep their details, changes and
-          documents together.
-        </p>
+          <h1>
+            Give your
+            <br />
+            possessions a
+            <br />
+            <em>memory.</em>
+          </h1>
 
-        <form onSubmit={submit}>
-          {mode === 'register' && (
+          <p>
+            Remember how each object entered your life, how it changed
+            while you owned it, and what is happening around it now.
+          </p>
+        </div>
+
+        <div className="authStoryNav">
+          <span>01 / MY OBJECTS</span>
+          <span>02 / ITS STORY</span>
+          <span>03 / THE WORLD AROUND IT</span>
+        </div>
+      </section>
+
+      <section className="authFormSide">
+        <div className="authFormWrap">
+          <div className="authFormEyebrow">
+            PRIVATE ARCHIVE / SECURE ENTRY
+          </div>
+
+          <h2>
+            {mode === 'login'
+              ? 'Welcome back.'
+              : 'Create your archive.'}
+          </h2>
+
+          <p className="authFormIntro">
+            Your objects, documents, and memories stay private to you.
+          </p>
+
+          <form onSubmit={submit}>
+            {mode === 'register' && (
+              <label>
+                Name
+
+                <input
+                  required
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      name: e.target.value,
+                    })
+                  }
+                  placeholder="Your name"
+                />
+              </label>
+            )}
+
             <label>
-              Name
+              Email
+
               <input
                 required
-                value={form.name}
+                type="email"
+                value={form.email}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    name: e.target.value,
+                    email: e.target.value,
                   })
+                }
+                placeholder="you@example.com"
+                autoComplete="email"
+              />
+            </label>
+
+            <label>
+              Password
+
+              <input
+                required
+                minLength="8"
+                type="password"
+                value={form.password}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    password: e.target.value,
+                  })
+                }
+                placeholder="8 characters minimum"
+                autoComplete={
+                  mode === 'login'
+                    ? 'current-password'
+                    : 'new-password'
                 }
               />
             </label>
+
+            {error && (
+              <div className="error authError">
+                {error}
+              </div>
+            )}
+
+            <button
+              className="authPrimary"
+              disabled={busy}
+            >
+              {busy
+                ? 'Opening your archive…'
+                : mode === 'login'
+                  ? 'Open my archive'
+                  : 'Create my archive'}
+
+              <ArrowRight size={16} />
+            </button>
+          </form>
+
+          {mode === 'login' && (
+            <>
+              <div className="authOr">
+                <span></span>
+                <b>OR</b>
+                <span></span>
+              </div>
+
+              <button
+                className="demoArchive"
+                onClick={demo}
+                disabled={busy}
+              >
+                <Sparkles size={16} />
+                Explore the demo archive
+              </button>
+
+              <div className="authPrivacy">
+                <LockKeyhole size={13} />
+                Local session · private by design
+              </div>
+            </>
           )}
 
-          <label>
-            Email
-            <input
-              required
-              type="email"
-              value={form.email}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  email: e.target.value,
-                })
-              }
-            />
-          </label>
+          <button
+            className="authSwitch"
+            onClick={() => {
+              setMode(
+                mode === 'login'
+                  ? 'register'
+                  : 'login'
+              );
 
-          <label>
-            Password
-            <input
-              required
-              minLength="6"
-              type="password"
-              value={form.password}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  password: e.target.value,
-                })
-              }
-            />
-          </label>
+              setForm({
+                name: '',
+                email: '',
+                password: '',
+              });
 
-          {error && <div className="error">{error}</div>}
-
-          <button className="btn primary full">
-            {mode === 'login'
-              ? 'Enter ObjectMemory'
-              : 'Create account'}
-            <ArrowRight size={14} />
+              setError('');
+            }}
+          >
+            {mode === 'login' ? (
+              <>
+                New to ObjectMemory? <b>Create an account</b>
+              </>
+            ) : (
+              <>
+                Already have an archive? <b>Sign in</b>
+              </>
+            )}
           </button>
-        </form>
-
-        {mode === 'login' && (
-          <div className="demoBox">
-            <b>Local demo account</b>
-            <span>demo@objectmemory.local</span>
-            <span>demo123</span>
-          </div>
-        )}
-
-        <button
-          className="switchAuth"
-          onClick={() => {
-            setMode(mode === 'login' ? 'register' : 'login');
-            setError('');
-          }}
-        >
-          {mode === 'login'
-            ? 'Need an account? Create one'
-            : 'Already have an account? Sign in'}
-        </button>
-
-        <div className="authFooter">
-          Local database · Your data stays on this machine
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -343,12 +457,17 @@ function ObjectCard({ obj }) {
     >
       <div className="objImg">
         {obj.imageUrl ? (
-          <img src={obj.imageUrl} alt={obj.title} />
+          <img
+            src={obj.imageUrl}
+            alt={obj.title}
+          />
         ) : (
           <ImagePlaceholder />
         )}
 
-        <span className="pill dark">{obj.category}</span>
+        <span className="pill dark">
+          {obj.category}
+        </span>
       </div>
 
       <div className="objBody">
@@ -371,11 +490,329 @@ function ObjectCard({ obj }) {
         </div>
 
         <div className="objFooter">
-          <span className="pill">USER PROVIDED</span>
+          <span className="pill">
+            USER PROVIDED
+          </span>
+
           <ChevronRight size={14} />
         </div>
       </div>
     </Link>
+  );
+}
+
+function formatMemoryDate(value) {
+  if (!value) return '';
+
+  const d = new Date(value);
+
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+}
+
+function daysUntil(value) {
+  if (!value) return null;
+
+  const d = new Date(value + 'T23:59:59');
+
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+
+  return Math.ceil(
+    (d - new Date()) / 86400000
+  );
+}
+
+function buildMemoryAnswer(
+  question,
+  objects,
+  recent,
+  documentCount
+) {
+  const q = question.toLowerCase().trim();
+
+  if (!q) {
+    return {
+      title: 'Ask about your archive.',
+      text:
+        'Try a question about warranties, recent damage, new arrivals, condition, repairs, documents, or what needs attention.',
+    };
+  }
+
+  const warranty = objects
+    .map((o) => ({
+      ...o,
+      days: daysUntil(o.warranty),
+    }))
+    .filter(
+      (o) => o.days !== null && o.days >= 0
+    )
+    .sort((a, b) => a.days - b.days);
+
+  const damage = recent.filter((e) =>
+    ['incident', 'damage'].includes(
+      String(e.type).toLowerCase()
+    )
+  );
+
+  const arrivals = recent.filter(
+    (e) =>
+      String(e.type).toLowerCase() === 'created'
+  );
+
+  const attention = objects.filter((o) =>
+    ['Damaged', 'Needs repair', 'Fair'].includes(
+      o.condition
+    )
+  );
+
+  if (
+    /warrant|expire|expiry|renew/.test(q)
+  ) {
+    if (!warranty.length) {
+      return {
+        title: 'No warranty deadline recorded.',
+        text:
+          'I could not find an upcoming warranty expiry in your current archive. Add warranty dates to your objects and I’ll surface them here.',
+      };
+    }
+
+    const top = warranty
+      .slice(0, 4)
+      .map(
+        (o) =>
+          `${o.title} — ${
+            o.days === 0
+              ? 'today'
+              : `in ${o.days} day${
+                  o.days === 1 ? '' : 's'
+                }`
+          } (${formatMemoryDate(o.warranty)})`
+      )
+      .join(' · ');
+
+    return {
+      title: 'Warranty deadlines',
+      text: top,
+    };
+  }
+
+  if (
+    /damage|damaged|scratch|crack|incident|repair|broke|broken|change/.test(
+      q
+    )
+  ) {
+    if (!damage.length) {
+      return {
+        title: 'No recent damage recorded.',
+        text:
+          'There are no incident or damage events in the current archive.',
+      };
+    }
+
+    const top = damage
+      .slice(0, 4)
+      .map(
+        (e) =>
+          `${e.object_title}: ${e.title}${
+            e.note ? ` — ${e.note}` : ''
+          } (${formatMemoryDate(
+            e.occurred_at || e.created_at
+          )})`
+      )
+      .join(' · ');
+
+    return {
+      title: 'Recent changes & incidents',
+      text: top,
+    };
+  }
+
+  if (
+    /new object|new arrival|arriv|added|recent object/.test(
+      q
+    )
+  ) {
+    if (!arrivals.length) {
+      return {
+        title: 'No recent arrivals recorded.',
+        text:
+          'Add an object and ObjectMemory will keep its arrival in the living record.',
+      };
+    }
+
+    const top = arrivals
+      .slice(0, 4)
+      .map(
+        (e) =>
+          `${e.object_title} — ${formatMemoryDate(
+            e.created_at
+          )}`
+      )
+      .join(' · ');
+
+    return {
+      title: 'Recent arrivals',
+      text: top,
+    };
+  }
+
+  if (
+    /condition|state|health|needs attention|attention|need/.test(
+      q
+    )
+  ) {
+    if (!attention.length) {
+      return {
+        title: 'Nothing currently flagged.',
+        text:
+          'No object is marked Fair, Damaged, or Needs repair.',
+      };
+    }
+
+    return {
+      title: 'Objects needing attention',
+      text: attention
+        .map(
+          (o) => `${o.title} — ${o.condition}`
+        )
+        .join(' · '),
+    };
+  }
+
+  if (
+    /document|receipt|invoice|paper/.test(q)
+  ) {
+    return {
+      title: 'Your archive documents',
+      text: `You currently have ${
+        documentCount || 0
+      } recorded document(s) across ${
+        objects.length
+      } object(s).`,
+    };
+  }
+
+  if (
+    /how many|count|many object|own/.test(q)
+  ) {
+    return {
+      title: 'Your object archive',
+      text: `You currently remember ${
+        objects.length
+      } object${
+        objects.length === 1 ? '' : 's'
+      } in ObjectMemory.`,
+    };
+  }
+
+  return {
+    title: 'Your archive at a glance',
+    text: `${objects.length} object${
+      objects.length === 1 ? '' : 's'
+    }, ${damage.length} recent incident${
+      damage.length === 1 ? '' : 's'
+    }, and ${warranty.length} upcoming warranty deadline${
+      warranty.length === 1 ? '' : 's'
+    } are currently visible to me.`,
+  };
+}
+
+function DashboardMemory({
+  objects,
+  recent,
+  documentCount,
+}) {
+  const [q, setQ] = useState('');
+  const [answer, setAnswer] = useState(null);
+
+  const suggestions = [
+    'Which warranties expire soon?',
+    'What damage was recorded recently?',
+    'What objects arrived recently?',
+    'What needs attention?',
+  ];
+
+  const ask = (value) => {
+    const question = value || q;
+
+    setQ(question);
+
+    setAnswer(
+      buildMemoryAnswer(
+        question,
+        objects,
+        recent,
+        documentCount
+      )
+    );
+  };
+
+  return (
+    <div className="dashboardMemory">
+      <div className="dashboardMemoryHead">
+        <div>
+          <div className="eyebrow">
+            ASK YOUR MEMORY
+          </div>
+
+          <h3>A question away.</h3>
+
+          <p>
+            Ask across your entire archive —
+            warranties, incidents, arrivals,
+            condition, repairs, documents and more.
+          </p>
+        </div>
+
+        <span className="memoryQuestionMark">?</span>
+      </div>
+
+      <div className="dashboardAskInput">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) =>
+            e.key === 'Enter' && ask()
+          }
+          placeholder="Which warranties expire soon?"
+        />
+
+        <button onClick={() => ask()}>
+          <MessageCircle size={15} />
+          Ask ObjectMemory
+          <ArrowRight size={14} />
+        </button>
+      </div>
+
+      <div className="memorySuggestions">
+        {suggestions.map((s) => (
+          <button
+            key={s}
+            onClick={() => ask(s)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {answer && (
+        <div className="memoryAnswer">
+          <div>
+            <Sparkles size={14} />
+            <b>{answer.title}</b>
+          </div>
+
+          <p>{answer.text}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -392,13 +829,17 @@ function Dashboard() {
   if (!d) {
     return (
       <Shell>
-        <div className="loading">Loading memory…</div>
+        <div className="loading">
+          Loading memory…
+        </div>
       </Shell>
     );
   }
 
   const filtered = d.objects.filter((o) =>
-    o.title.toLowerCase().includes(q.toLowerCase())
+    o.title
+      .toLowerCase()
+      .includes(q.toLowerCase())
   );
 
   return (
@@ -417,9 +858,10 @@ function Dashboard() {
             </h1>
 
             <p>
-              ObjectMemory remembers not only what you own, but how
-              it entered your life, how it changed, and the documents
-              and notes around it.
+              ObjectMemory remembers not only
+              what you own, but how it entered your
+              life, how it changed, and the
+              documents and notes around it.
             </p>
 
             <div className="heroActions">
@@ -442,14 +884,18 @@ function Dashboard() {
           </div>
 
           <div className="quote">
-            <div className="eyebrow">A small reminder</div>
+            <div className="eyebrow">
+              A small reminder
+            </div>
 
             <blockquote>
-              “The smallest details are often the ones you’ll
-              want back.”
+              “The smallest details are often the
+              ones you’ll want back.”
             </blockquote>
 
-            <span>♡ Your memory, in context</span>
+            <span>
+              ♡ Your memory, in context
+            </span>
           </div>
         </section>
 
@@ -462,13 +908,19 @@ function Dashboard() {
 
           <Stat
             icon={<AlertTriangle size={14} />}
-            value={String(d.stats.incidents).padStart(2, '0')}
+            value={String(d.stats.incidents).padStart(
+              2,
+              '0'
+            )}
             label="Attention needed"
           />
 
           <Stat
             icon={<FileText size={14} />}
-            value={String(d.stats.documents).padStart(2, '0')}
+            value={String(d.stats.documents).padStart(
+              2,
+              '0'
+            )}
             label="Documents"
           />
 
@@ -479,6 +931,12 @@ function Dashboard() {
           />
         </div>
 
+        <DashboardMemory
+          objects={d.objects}
+          recent={d.recent}
+          documentCount={d.stats.documents}
+        />
+
         <section className="split">
           <div className="wide">
             <div className="sectionHead">
@@ -486,15 +944,19 @@ function Dashboard() {
                 <div className="eyebrow">
                   THE OBJECT SHELF
                 </div>
+
                 <h2>What I own</h2>
               </div>
 
               <div className="shelfSearch">
                 <Search size={13} />
+
                 <input
                   placeholder="Filter objects"
                   value={q}
-                  onChange={(e) => setQ(e.target.value)}
+                  onChange={(e) =>
+                    setQ(e.target.value)
+                  }
                 />
               </div>
             </div>
@@ -516,33 +978,6 @@ function Dashboard() {
           </div>
 
           <aside>
-            <div className="askCard">
-              <div className="eyebrow">
-                ASK YOUR MEMORY
-              </div>
-
-              <h3>A question away.</h3>
-
-              <p>
-                Open an object to ask its local AI assistant about
-                condition, damage, warranty, documents or history.
-              </p>
-
-              <Link
-                className="btn light"
-                to={
-                  d.objects[0]
-                    ? '/objects/' +
-                      d.objects[0].id +
-                      '?tab=ask'
-                    : ''
-                }
-              >
-                Ask ObjectMemory
-                <ArrowRight size={13} />
-              </Link>
-            </div>
-
             <div className="nudges">
               <div className="eyebrow">
                 SMALL ATTENTIONS
@@ -553,7 +988,16 @@ function Dashboard() {
               <div className="nudge">
                 <b>Keep details current</b>
                 <span>
-                  Record damage or changes when they happen.
+                  Record damage or changes when
+                  they happen.
+                </span>
+              </div>
+
+              <div className="nudge">
+                <b>Capture the context</b>
+                <span>
+                  Add documents, receipts and notes
+                  while they are still easy to find.
                 </span>
               </div>
             </div>
@@ -566,6 +1010,7 @@ function Dashboard() {
               <div className="eyebrow">
                 THE LIVING RECORD
               </div>
+
               <h2>Recent memory</h2>
             </div>
 
@@ -592,7 +1037,9 @@ function Dashboard() {
                   {e.object_title} · {e.note}
                 </small>
 
-                <i>{e.type.toUpperCase()}</i>
+                <i>
+                  {e.type.toUpperCase()}
+                </i>
               </div>
             ))}
           </div>
@@ -681,11 +1128,10 @@ async function detectCategoryFromImage(file) {
   }
 
   try {
-    visionModelPromise ||=
-      mobilenet.load({
-        version: 2,
-        alpha: 1.0,
-      });
+    visionModelPromise ||= mobilenet.load({
+      version: 2,
+      alpha: 1.0,
+    });
 
     const model = await visionModelPromise;
 
@@ -699,16 +1145,20 @@ async function detectCategoryFromImage(file) {
       img.onerror = reject;
     });
 
-    const predictions = await model.classify(img, 5);
+    const predictions = await model.classify(
+      img,
+      5
+    );
 
     URL.revokeObjectURL(url);
 
     for (const p of predictions) {
       const label = p.className.toLowerCase();
 
-      for (const [category, terms] of Object.entries(
-        CATEGORY_RULES
-      )) {
+      for (const [
+        category,
+        terms,
+      ] of Object.entries(CATEGORY_RULES)) {
         if (
           terms.some((term) =>
             label.includes(term)
@@ -725,7 +1175,8 @@ async function detectCategoryFromImage(file) {
 
     return {
       category: 'Other',
-      label: predictions[0]?.className || '',
+      label:
+        predictions[0]?.className || '',
       confidence:
         predictions[0]?.probability || 0,
     };
@@ -781,9 +1232,12 @@ function AddObject() {
 
   const [photo, setPhoto] = useState(null);
   const [preview, setPreview] = useState('');
-  const [detecting, setDetecting] = useState(false);
-  const [detected, setDetected] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [detecting, setDetecting] =
+    useState(false);
+  const [detected, setDetected] =
+    useState(null);
+  const [saving, setSaving] =
+    useState(false);
 
   const set = (k, v) => {
     setF((prev) => ({
@@ -801,7 +1255,9 @@ function AddObject() {
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image must be 10 MB or smaller.');
+      alert(
+        'Image must be 10 MB or smaller.'
+      );
       return;
     }
 
@@ -845,10 +1301,13 @@ function AddObject() {
 
       if (photo) {
         const fd = new FormData();
+
         fd.append('file', photo);
 
         await api(
-          '/objects/' + d.object.id + '/image',
+          '/objects/' +
+            d.object.id +
+            '/image',
           {
             method: 'POST',
             body: fd,
@@ -867,10 +1326,7 @@ function AddObject() {
   return (
     <Shell>
       <div className="formPage container">
-        <Link
-          to="/"
-          className="back"
-        >
+        <Link to="/" className="back">
           <ArrowLeft size={14} />
           Back to archive
         </Link>
@@ -882,9 +1338,9 @@ function AddObject() {
         <h1>Add an object.</h1>
 
         <p className="pageIntro">
-          Give ObjectMemory a photograph first. AI can suggest
-          what it sees; you decide what becomes part of the
-          record.
+          Give ObjectMemory a photograph first. AI
+          can suggest what it sees; you decide what
+          becomes part of the record.
         </p>
 
         <form
@@ -900,6 +1356,7 @@ function AddObject() {
                       src={preview}
                       alt="Selected object preview"
                     />
+
                     <span className="photoChangeHint">
                       Click to replace photo
                     </span>
@@ -907,12 +1364,14 @@ function AddObject() {
                 ) : (
                   <>
                     <Camera size={30} />
+
                     <b>
                       Upload an object photograph
                     </b>
+
                     <span>
-                      JPEG, PNG or WEBP · up to 10 MB ·
-                      kept private
+                      JPEG, PNG or WEBP · up to
+                      10 MB · kept private
                     </span>
                   </>
                 )}
@@ -996,30 +1455,40 @@ function AddObject() {
                 label="Object name"
                 required
                 value={f.title}
-                onChange={(v) => set('title', v)}
+                onChange={(v) =>
+                  set('title', v)
+                }
                 placeholder="e.g. Galaxy S24"
               />
 
               <Field
                 label="Brand"
                 value={f.brand}
-                onChange={(v) => set('brand', v)}
+                onChange={(v) =>
+                  set('brand', v)
+                }
                 placeholder="e.g. Samsung"
               />
 
               <Field
                 label="Model"
                 value={f.model}
-                onChange={(v) => set('model', v)}
+                onChange={(v) =>
+                  set('model', v)
+                }
                 placeholder="e.g. SM-S921B"
               />
 
               <label>
                 Category
+
                 <select
                   value={f.category}
                   onChange={(e) =>
-                    set('category', e.target.value)
+                    set(
+                      'category',
+                      e.target.value
+                    )
                   }
                 >
                   <option>Other</option>
@@ -1108,6 +1577,7 @@ function AddObject() {
             <div className="formGrid">
               <label>
                 Current condition
+
                 <select
                   value={f.condition}
                   onChange={(e) =>
@@ -1127,6 +1597,7 @@ function AddObject() {
 
               <div className="conditionHint">
                 <CheckCircle2 size={14} />
+
                 <span>
                   Update this whenever the object's
                   state changes.
@@ -1201,7 +1672,9 @@ function Field({
   placeholder,
 }) {
   return (
-    <label className={full ? 'fullRow' : ''}>
+    <label
+      className={full ? 'fullRow' : ''}
+    >
       {label}
 
       <input
@@ -1335,7 +1808,9 @@ function ObjectDetail() {
     }
 
     if (selected.size > 10 * 1024 * 1024) {
-      alert('Image must be 10 MB or smaller.');
+      alert(
+        'Image must be 10 MB or smaller.'
+      );
       return;
     }
 
@@ -1408,10 +1883,7 @@ function ObjectDetail() {
     <Shell>
       <div className="container detail">
         <div className="detailTop">
-          <Link
-            className="back"
-            to="/"
-          >
+          <Link className="back" to="/">
             <ArrowLeft size={14} />
             Back to archive
           </Link>
@@ -1467,6 +1939,7 @@ function ObjectDetail() {
 
               <label className="photoAddButton">
                 <Camera size={14} />
+
                 <span>Change photo</span>
 
                 <input
@@ -1581,8 +2054,7 @@ function ObjectDetail() {
                 hidden
                 onChange={(e) => {
                   setFile(
-                    e.target.files?.[0] ||
-                      null
+                    e.target.files?.[0] || null
                   );
 
                   setTimeout(() => {}, 0);
@@ -1666,10 +2138,11 @@ function ObjectDetail() {
               <h2>Market memory</h2>
 
               <p>
-                Live market data is not connected in
-                this local build. Your recorded value
-                is stored exactly as entered and is not
-                presented as a live valuation.
+                Live market data is not connected
+                in this local build. Your recorded
+                value is stored exactly as entered
+                and is not presented as a live
+                valuation.
               </p>
             </div>
           </div>
@@ -1765,9 +2238,11 @@ function Overview({
               <option value="damage">
                 Damage note
               </option>
+
               <option value="incident">
                 Incident
               </option>
+
               <option value="note">
                 General note
               </option>
@@ -1957,9 +2432,9 @@ function AskAI({
         <h2>Talk to your object.</h2>
 
         <p>
-          I answer from the information stored for this
-          object. No external AI service is required for
-          the local build.
+          I answer from the information stored
+          for this object. No external AI service
+          is required for the local build.
         </p>
 
         <div className="chat">
@@ -1968,9 +2443,10 @@ function AskAI({
               <b>Assistant</b>
 
               <span>
-                Ask me about {obj.title}: condition,
-                damage, warranty, documents, purchase
-                date, value or history.
+                Ask me about {obj.title}:
+                condition, damage, warranty,
+                documents, purchase date, value or
+                history.
               </span>
             </div>
           )}
@@ -2038,12 +2514,11 @@ function EditModal({
     description: obj.description,
   });
 
-  const set = (k, v) => {
+  const set = (k, v) =>
     setF({
       ...f,
       [k]: v,
     });
-  };
 
   return (
     <div className="overlay">
@@ -2072,6 +2547,7 @@ function EditModal({
 
           <label>
             Category
+
             <select
               value={f.category}
               onChange={(e) =>
@@ -2093,6 +2569,7 @@ function EditModal({
 
           <label>
             Condition
+
             <select
               value={f.condition}
               onChange={(e) =>
@@ -2115,10 +2592,7 @@ function EditModal({
             type="date"
             value={f.purchaseDate}
             onChange={(v) =>
-              set(
-                'purchaseDate',
-                v
-              )
+              set('purchaseDate', v)
             }
           />
 
@@ -2134,10 +2608,7 @@ function EditModal({
             label="Warranty"
             value={f.warranty}
             onChange={(v) =>
-              set(
-                'warranty',
-                v
-              )
+              set('warranty', v)
             }
           />
 
@@ -2154,10 +2625,7 @@ function EditModal({
             full
             value={f.description}
             onChange={(v) =>
-              set(
-                'description',
-                v
-              )
+              set('description', v)
             }
           />
         </div>
@@ -2196,18 +2664,13 @@ function Archive() {
     api(
       '/objects?search=' +
         encodeURIComponent(q)
-    ).then((x) =>
-      setItems(x.objects)
-    );
+    ).then((x) => setItems(x.objects));
   }, [q]);
 
   return (
     <Shell>
       <div className="container archive">
-        <Link
-          className="back"
-          to="/"
-        >
+        <Link className="back" to="/">
           <ArrowLeft size={14} />
           Back
         </Link>
@@ -2257,35 +2720,23 @@ function Archive() {
 
 function Incident() {
   const [objects, setObjects] = useState([]);
-  const [objectId, setObjectId] =
-    useState('');
+  const [objectId, setObjectId] = useState('');
   const [change, setChange] =
     useState('Damage / scratch');
-
   const [date, setDate] = useState(
     new Date()
       .toISOString()
       .slice(0, 10)
   );
-
-  const [photo, setPhoto] =
-    useState(null);
-
-  const [preview, setPreview] =
-    useState('');
-
-  const [note, setNote] =
-    useState('');
-
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState('');
+  const [note, setNote] = useState('');
   const [condition, setCondition] =
     useState('');
-
   const [detecting, setDetecting] =
     useState(false);
-
   const [observation, setObservation] =
     useState(null);
-
   const [saving, setSaving] =
     useState(false);
 
@@ -2297,14 +2748,10 @@ function Incident() {
         setObjects(x.objects);
 
         if (x.objects[0]) {
-          setObjectId(
-            x.objects[0].id
-          );
+          setObjectId(x.objects[0].id);
         }
       })
-      .catch((e) =>
-        alert(e.message)
-      );
+      .catch((e) => alert(e.message));
   }, []);
 
   const handlePhoto = async (file) => {
@@ -2316,14 +2763,14 @@ function Incident() {
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('Image must be 10 MB or smaller.');
+      alert(
+        'Image must be 10 MB or smaller.'
+      );
       return;
     }
 
     setPhoto(file);
-    setPreview(
-      URL.createObjectURL(file)
-    );
+    setPreview(URL.createObjectURL(file));
     setObservation(null);
     setDetecting(true);
 
@@ -2349,10 +2796,7 @@ function Incident() {
   const submit = async (e) => {
     e.preventDefault();
 
-    if (
-      !objectId ||
-      !note.trim()
-    ) {
+    if (!objectId || !note.trim()) {
       alert(
         'Choose an object and describe what happened.'
       );
@@ -2380,6 +2824,7 @@ function Incident() {
 
       if (photo) {
         const fd = new FormData();
+
         fd.append('file', photo);
 
         await api(
@@ -2410,10 +2855,7 @@ function Incident() {
   return (
     <Shell>
       <div className="container incidentPage">
-        <Link
-          className="back"
-          to="/"
-        >
+        <Link className="back" to="/">
           <ArrowLeft size={14} />
           Back
         </Link>
@@ -2425,8 +2867,9 @@ function Incident() {
         <h1>Report a change.</h1>
 
         <p className="pageIntro">
-          Keep the record honest. AI can observe a photo,
-          but you decide what becomes memory.
+          Keep the record honest. AI can observe
+          a photo, but you decide what becomes
+          memory.
         </p>
 
         <form
@@ -2439,9 +2882,7 @@ function Incident() {
             <select
               value={objectId}
               onChange={(e) =>
-                setObjectId(
-                  e.target.value
-                )
+                setObjectId(e.target.value)
               }
             >
               <option value="">
@@ -2502,9 +2943,7 @@ function Incident() {
                 type="date"
                 value={date}
                 onChange={(e) =>
-                  setDate(
-                    e.target.value
-                  )
+                  setDate(e.target.value)
                 }
               />
             </label>
@@ -2572,7 +3011,6 @@ function Incident() {
                       {observation?.label
                         ? `The image classifier sees “${observation.label}”.`
                         : 'The photo is stored as visual evidence.'}{' '}
-
                       {observation?.confidence
                         ? `${Math.round(
                             observation.confidence *
@@ -2611,14 +3049,13 @@ function Incident() {
             <select
               value={condition}
               onChange={(e) =>
-                setCondition(
-                  e.target.value
-                )
+                setCondition(e.target.value)
               }
             >
               <option value="">
                 Keep current condition
               </option>
+
               <option>Excellent</option>
               <option>Good</option>
               <option>Fair</option>
@@ -2628,9 +3065,10 @@ function Incident() {
           </label>
 
           <div className="safetyBoundary">
-            <b>Safety boundary:</b> AI observations are not a
-            diagnosis. For electrical, liquid or safety-critical
-            issues, stop using the object and contact a qualified
+            <b>Safety boundary:</b> AI observations
+            are not a diagnosis. For electrical,
+            liquid or safety-critical issues, stop
+            using the object and contact a qualified
             professional.
           </div>
 
@@ -2644,9 +3082,7 @@ function Incident() {
 
             <button
               className="btn primary"
-              disabled={
-                saving || detecting
-              }
+              disabled={saving || detecting}
             >
               {saving ? (
                 'Saving…'
@@ -2667,17 +3103,13 @@ function Incident() {
 
 function SettingsPage() {
   const user = JSON.parse(
-    localStorage.getItem('om_user') ||
-      '{}'
+    localStorage.getItem('om_user') || '{}'
   );
 
   return (
     <Shell>
       <div className="container settingsPage">
-        <Link
-          className="back"
-          to="/"
-        >
+        <Link className="back" to="/">
           <ArrowLeft size={14} />
           Back
         </Link>
@@ -2706,14 +3138,12 @@ function SettingsPage() {
             STORAGE
           </div>
 
-          <h2>
-            Private local database
-          </h2>
+          <h2>Private local database</h2>
 
           <p>
             Your objects, events, documents and AI
-            conversations are stored in the local SQLite
-            database inside this project.
+            conversations are stored in the local
+            SQLite database inside this project.
           </p>
         </div>
       </div>
