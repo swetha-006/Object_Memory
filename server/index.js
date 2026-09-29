@@ -5,9 +5,28 @@ import fs from 'fs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
+
+// Tiny local .env loader so the server can use market API keys without
+// adding another dependency. Existing process environment variables win.
+function loadLocalEnv(file) {
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match || process.env[match[1]] !== undefined) continue;
+    let value = match[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    process.env[match[1]] = value;
+  }
+}
+
+loadLocalEnv(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.env'));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -16,9 +35,9 @@ const uploadDir = path.join(root, 'uploads');
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const db = new Database(path.join(dataDir, 'objectmemory.sqlite'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(path.join(dataDir, 'objectmemory.sqlite'));
+db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA foreign_keys = ON;');
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +93,19 @@ CREATE TABLE IF NOT EXISTS chat_messages (
  FOREIGN KEY(object_id) REFERENCES objects(id) ON DELETE CASCADE,
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS market_snapshots (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ object_id INTEGER NOT NULL,
+ observed_at TEXT NOT NULL,
+ price REAL NOT NULL,
+ currency TEXT NOT NULL DEFAULT 'INR',
+ source TEXT NOT NULL DEFAULT '',
+ title TEXT NOT NULL DEFAULT '',
+ url TEXT DEFAULT '',
+ FOREIGN KEY(object_id) REFERENCES objects(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_market_snapshots_object_date
+  ON market_snapshots(object_id, observed_at);
 `);
 
 // Lightweight migrations for existing local databases.
@@ -105,6 +137,185 @@ app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(uploadDir));
 const JWT_SECRET = process.env.OBJECTMEMORY_JWT_SECRET || 'objectmemory-local-secret-change-me';
+
+function marketQueryForObject(obj) {
+  const identity = [obj.brand, obj.model, obj.title, obj.subtitle]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return identity;
+}
+
+function parseMarketPrice(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (!value) return null;
+  const cleaned = String(value).replace(/[^0-9.,]/g, '').replace(/,(?=\d{3}\b)/g, '');
+  const n = Number(cleaned.replace(/,/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function median(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a,b)=>a-b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid-1] + sorted[mid]) / 2;
+}
+
+function marketSummary(objectId) {
+  const rows = db.prepare(`
+    SELECT * FROM market_snapshots
+    WHERE object_id=?
+    ORDER BY datetime(observed_at) ASC, id ASC
+  `).all(objectId);
+
+  const byDay = new Map();
+  for (const row of rows) {
+    const day = row.observed_at.slice(0,10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(row);
+  }
+
+  const history = [...byDay.entries()].map(([date, items]) => ({
+    date,
+    price: Math.round(median(items.map(x=>Number(x.price))))
+  }));
+
+  const latest = history.length ? Number(history[history.length-1].price) : null;
+  const previousDay = history.length > 1 ? history[history.length-2].price : null;
+  const first = history.length ? history[0].price : null;
+  const changePercent = first && latest && history.length > 1
+    ? Number((((latest - first) / first) * 100).toFixed(1))
+    : null;
+
+  let trend = 'No history yet';
+  if (history.length >= 2) {
+    if (changePercent > 1) trend = 'Rising';
+    else if (changePercent < -1) trend = 'Falling';
+    else trend = 'Stable';
+  } else if (history.length === 1) {
+    trend = 'Collecting history';
+  }
+
+  return {
+    currentPrice: latest ? Math.round(latest) : null,
+    previousPrice: previousDay,
+    changePercent,
+    trend,
+    history,
+    observations: rows.length,
+    firstObservedAt: rows[0]?.observed_at || null,
+    lastObservedAt: rows[rows.length-1]?.observed_at || null,
+    listings: rows.slice(-20).reverse().map(x => ({
+      price: Number(x.price), source: x.source, title: x.title, url: x.url,
+      observedAt: x.observed_at, currency: x.currency
+    }))
+  };
+}
+
+async function fetchMarketListings(obj) {
+  const apiKey = process.env.SERPAPI_KEY;
+  if (!apiKey) {
+    const err = new Error('Market data is not configured. Add SERPAPI_KEY to your .env file.');
+    err.code = 'MARKET_NOT_CONFIGURED';
+    throw err;
+  }
+
+  const query = marketQueryForObject(obj);
+  if (!query) {
+    const err = new Error('Add a brand, model, or object name before checking market data.');
+    err.code = 'MARKET_IDENTITY_MISSING';
+    throw err;
+  }
+
+  const params = new URLSearchParams({
+    engine: 'google_shopping',
+    q: query,
+    api_key: apiKey,
+    gl: process.env.MARKET_GL || 'in',
+    hl: process.env.MARKET_HL || 'en',
+    google_domain: process.env.MARKET_GOOGLE_DOMAIN || 'google.co.in'
+  });
+
+  const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    throw new Error(data.error || `Market provider returned HTTP ${response.status}`);
+  }
+
+  const results = Array.isArray(data.shopping_results) ? data.shopping_results : [];
+  const normalizedQuery = query.toLowerCase();
+  const model = String(obj.model || '').toLowerCase().trim();
+  const brand = String(obj.brand || '').toLowerCase().trim();
+
+  const candidates = results
+    .map(r => ({
+      price: parseMarketPrice(r.extracted_price ?? r.price),
+      source: r.source || 'Google Shopping',
+      title: r.title || query,
+      url: r.product_link || r.link || '',
+      secondHand: Boolean(r.second_hand_condition)
+    }))
+    .filter(r => r.price && r.price > 0 && !r.secondHand)
+    .filter(r => {
+      const t = r.title.toLowerCase();
+      const brandMatch = !brand || t.includes(brand);
+      const modelTokens = model.split(/[^a-z0-9]+/).filter(x => x.length > 1);
+      const modelMatch = !modelTokens.length || modelTokens.every(token => t.includes(token));
+      return brandMatch && modelMatch;
+    });
+
+  // Keep one listing per source/title pair and cap the snapshot size.
+  const seen = new Set();
+  return candidates.filter(r => {
+    const key = `${r.source}|${r.title}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 12);
+}
+
+app.get('/api/objects/:id/market', auth, async (req,res) => {
+  const o = objectForUser(req.params.id, req.user.id);
+  if (!o) return res.status(404).json({error:'Object not found'});
+
+  const shouldRefresh = req.query.refresh === '1';
+  try {
+    let fetched = 0;
+    if (shouldRefresh) {
+      const listings = await fetchMarketListings(o);
+      const t = now();
+      const insert = db.prepare(`
+        INSERT INTO market_snapshots(object_id,observed_at,price,currency,source,title,url)
+        VALUES (?,?,?,?,?,?,?)
+      `);
+      db.exec('BEGIN');
+      try {
+        for (const item of listings) insert.run(o.id,t,item.price,'INR',item.source,item.title,item.url);
+        db.exec('COMMIT');
+      } catch (transactionError) {
+        try { db.exec('ROLLBACK'); } catch {}
+        throw transactionError;
+      }
+      fetched = listings.length;
+    }
+
+    res.json({
+      configured: Boolean(process.env.SERPAPI_KEY),
+      query: marketQueryForObject(o),
+      fetched,
+      ...marketSummary(o.id)
+    });
+  } catch (e) {
+    const status = e.code === 'MARKET_NOT_CONFIGURED' || e.code === 'MARKET_IDENTITY_MISSING' ? 400 : 502;
+    res.status(status).json({
+      error: e.message,
+      configured: Boolean(process.env.SERPAPI_KEY),
+      query: marketQueryForObject(o),
+      ...marketSummary(o.id)
+    });
+  }
+});
 
 function auth(req,res,next){
   const token = (req.headers.authorization||'').replace(/^Bearer\s+/i,'');

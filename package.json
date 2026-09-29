@@ -13,7 +13,6 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "bcryptjs": "latest",
-    "better-sqlite3": "latest",
     "concurrently": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",

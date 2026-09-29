@@ -39,6 +39,8 @@ import {
   ImagePlus,
   Sparkles,
   Archive as ArchiveIcon,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import * as mobilenet from '@tensorflow-models/mobilenet';
 import '@tensorflow/tfjs';
@@ -1717,6 +1719,10 @@ function ObjectDetail() {
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
 
+  const [market, setMarket] = useState(null);
+  const [marketBusy, setMarketBusy] = useState(false);
+  const [marketError, setMarketError] = useState('');
+
   const load = () =>
     api('/objects/' + id).then((x) =>
       setObj(x.object)
@@ -1739,6 +1745,26 @@ function ObjectDetail() {
       setTab(t);
     }
   }, [location.search]);
+
+  const loadMarket = async (refresh = false) => {
+    setMarketBusy(true);
+    setMarketError('');
+    try {
+      const d = await api(
+        '/objects/' + id + '/market' + (refresh ? '?refresh=1' : '')
+      );
+      setMarket(d);
+    } catch (e) {
+      setMarketError(e.message);
+      setMarket(e.market || null);
+    } finally {
+      setMarketBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'market') loadMarket(true);
+  }, [id, tab]);
 
   if (!obj) {
     return (
@@ -2129,23 +2155,13 @@ function ObjectDetail() {
         )}
 
         {tab === 'market' && (
-          <div className="singleTab">
-            <div className="card market">
-              <div className="eyebrow">
-                AROUND YOUR OBJECT
-              </div>
-
-              <h2>Market memory</h2>
-
-              <p>
-                Live market data is not connected
-                in this local build. Your recorded
-                value is stored exactly as entered
-                and is not presented as a live
-                valuation.
-              </p>
-            </div>
-          </div>
+          <MarketTab
+            obj={obj}
+            market={market}
+            busy={marketBusy}
+            error={marketError}
+            onRefresh={() => loadMarket(true)}
+          />
         )}
 
         {tab === 'ask' && (
@@ -2177,6 +2193,147 @@ function Info({ label, value }) {
       <small>{label}</small>
       <b>{value}</b>
       <i>USER PROVIDED</i>
+    </div>
+  );
+}
+
+function MarketTab({ obj, market, busy, error, onRefresh }) {
+  const money = (value) => value == null ? '—' : `₹${Math.round(value).toLocaleString('en-IN')}`;
+  const change = market?.changePercent;
+  const trendClass = market?.trend === 'Rising' ? 'marketUp' : market?.trend === 'Falling' ? 'marketDown' : '';
+
+  return (
+    <div className="singleTab">
+      <div className="marketHeaderRow">
+        <div>
+          <div className="eyebrow">LIVE MARKET OBSERVATION</div>
+          <h2>What the market is doing</h2>
+          <p className="marketSub">
+            Based on current Google Shopping listings matching {market?.query || [obj.brand, obj.model, obj.title].filter(Boolean).join(' ')} in India.
+          </p>
+        </div>
+        <button className="btn small" onClick={onRefresh} disabled={busy}>
+          <RefreshCw size={13} className={busy ? 'spin' : ''} />
+          {busy ? 'Checking…' : 'Refresh market'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="marketNotice">
+          <b>Market data unavailable</b>
+          <span>{error}</span>
+          {!market?.configured && (
+            <span>Add <code>SERPAPI_KEY</code> to <code>.env</code>, then restart the server.</span>
+          )}
+        </div>
+      )}
+
+      <div className="marketGrid">
+        <div className="card marketMetric">
+          <small>CURRENT MARKET PRICE</small>
+          <strong>{money(market?.currentPrice)}</strong>
+          <span>{market?.observations ? `${market.observations} listing observations stored` : 'No observations yet'}</span>
+        </div>
+        <div className="card marketMetric">
+          <small>TREND</small>
+          <strong className={trendClass}>{market?.trend || 'No data'}</strong>
+          <span>{change == null ? 'Collecting price history' : `${change > 0 ? '+' : ''}${change}% since first observation`}</span>
+        </div>
+        <div className="card marketMetric">
+          <small>YOUR RECORDED PRICE</small>
+          <strong>{money(Number(obj.value) || null)}</strong>
+          <span>User-provided purchase value · not a valuation</span>
+        </div>
+      </div>
+
+      <div className="card marketChartCard">
+        <div className="sectionHead">
+          <div>
+            <div className="eyebrow">PRICE HISTORY</div>
+            <h2>Observed market movement</h2>
+          </div>
+          <span className="micro">
+            {market?.firstObservedAt ? `Since ${new Date(market.firstObservedAt).toLocaleDateString()}` : 'Refresh to start history'}
+          </span>
+        </div>
+
+        {market?.history?.length ? (
+          <MarketChart history={market.history} />
+        ) : (
+          <div className="marketEmpty">
+            {busy ? 'Collecting current listings…' : 'No market observations yet.'}
+          </div>
+        )}
+      </div>
+
+      <div className="card marketListings">
+        <div className="sectionHead">
+          <div>
+            <div className="eyebrow">SOURCE LISTINGS</div>
+            <h2>Where the observed prices came from</h2>
+          </div>
+        </div>
+        {market?.listings?.length ? market.listings.slice(0,8).map((item, i) => (
+          <div className="marketListing" key={`${item.source}-${item.title}-${i}`}>
+            <div>
+              <b>{item.title}</b>
+              <span>{item.source} · {new Date(item.observedAt).toLocaleString()}</span>
+            </div>
+            <strong>{money(item.price)}</strong>
+            {item.url && <a href={item.url} target="_blank" rel="noreferrer" aria-label="Open listing"><ExternalLink size={13} /></a>}
+          </div>
+        )) : (
+          <div className="empty">No source listings have been captured yet.</div>
+        )}
+      </div>
+
+      <div className="marketDisclaimer">
+        <b>Important:</b> this is an observed retail-listing trend, not an official appraisal or guaranteed resale value. Prices can vary by seller, promotion, stock and condition.
+      </div>
+    </div>
+  );
+}
+
+function MarketChart({ history }) {
+  if (history.length === 1) {
+    return (
+      <div className="marketSinglePoint">
+        <strong>₹{history[0].price.toLocaleString('en-IN')}</strong>
+        <span>{new Date(history[0].date).toLocaleDateString()} · first observation</span>
+      </div>
+    );
+  }
+
+  const width = 760;
+  const height = 220;
+  const padX = 34;
+  const padY = 24;
+  const values = history.map(x => x.price);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(max - min, max * 0.04, 1);
+  const low = min - spread * 0.15;
+  const high = max + spread * 0.15;
+  const points = history.map((item, index) => {
+    const x = padX + (index / (history.length - 1)) * (width - padX * 2);
+    const y = height - padY - ((item.price - low) / (high - low)) * (height - padY * 2);
+    return { ...item, x, y };
+  });
+  const line = points.map(p => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <div className="marketChartWrap">
+      <svg viewBox={`0 0 ${width} ${height}`} className="marketChart" role="img" aria-label="Observed market price history">
+        <line x1={padX} y1={height-padY} x2={width-padX} y2={height-padY} className="chartAxis" />
+        <polyline points={line} fill="none" className="chartLine" />
+        {points.map((p, i) => (
+          <g key={p.date}>
+            <circle cx={p.x} cy={p.y} r="4" className="chartPoint" />
+            <text x={p.x} y={height-7} textAnchor="middle" className="chartLabel">{new Date(p.date).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</text>
+            {i === points.length - 1 && <text x={p.x} y={p.y-10} textAnchor="middle" className="chartValue">₹{Math.round(p.price).toLocaleString('en-IN')}</text>}
+          </g>
+        ))}
+      </svg>
     </div>
   );
 }

@@ -50,3 +50,15 @@ Then start again. The demo user and sample object will be recreated.
 
 ## Notes
 The project is a clean-room implementation, not the original Emergent source. The local assistant answers from stored object data and intentionally does not pretend to provide live market valuation or external facts.
+
+## Market trend
+
+The Object Detail → Market tab can query Google Shopping listings through SerpApi. The server stores each refresh as a dated SQLite snapshot and calculates the observed price trend from those real observations; it does not fabricate historical prices.
+
+1. Copy `.env.example` to `.env`.
+2. Add your `SERPAPI_KEY`.
+3. Start the project with `npm run dev`.
+4. Open an object that has a brand/model (or a clear object name).
+5. Open **Market** and click **Refresh market**.
+
+The first refresh creates the first observation. A trend percentage appears after observations from at least two different dates have been collected.
