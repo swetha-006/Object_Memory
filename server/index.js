@@ -874,11 +874,20 @@ app.delete('/api/objects/:id', auth, (req, res) => {
 app.post('/api/objects/:id/events', auth, (req, res) => {
   const o = objectForUser(req.params.id, req.user.id);
   if (!o) return res.status(404).json({ error: 'Object not found' });
-  const { type = 'note', title, note = '', condition = '', occurredAt = '' } = req.body || {};
-  if (!title || !title.trim()) return res.status(400).json({ error: 'Event title is required.' });
+  const { type = 'note', title = '', note = '', condition = '', occurredAt = '' } = req.body || {};
+
+  const cleanNote = String(note || '').trim();
+  const cleanTitle = String(title || '').trim();
+
+  // Strict validation: Reject empty entries
+  if (!cleanNote && (!cleanTitle || cleanTitle.toLowerCase() === 'damage / change noted' || cleanTitle.toLowerCase() === 'general note')) {
+    return res.status(400).json({ error: 'Please describe the damage or note before saving.' });
+  }
+
+  const finalTitle = cleanTitle || (cleanNote.length > 50 ? cleanNote.slice(0, 50) + '…' : cleanNote);
   const t = now();
   const info = db.prepare('INSERT INTO events(object_id,type,title,note,condition,created_at,occurred_at,image_path) VALUES (?,?,?,?,?,?,?,?)')
-    .run(o.id, type, title.trim(), note, condition, t, occurredAt || t, '');
+    .run(o.id, type, finalTitle, cleanNote, condition || '', t, occurredAt || t, '');
 
   if (condition && condition !== o.condition) {
     db.prepare('UPDATE objects SET condition=?, updated_at=? WHERE id=?').run(condition, t, o.id);
@@ -889,6 +898,24 @@ app.post('/api/objects/:id/events', auth, (req, res) => {
   const event = db.prepare(`SELECT *, CASE WHEN image_path IS NOT NULL AND image_path != '' THEN '/uploads/'||image_path ELSE NULL END AS imageUrl FROM events WHERE id=?`).get(Number(info.lastInsertRowid));
   res.status(201).json({ object: serializeObject(objectForUser(o.id, req.user.id)), event });
 });
+
+app.delete('/api/objects/:id/events/:eventId', auth, (req, res) => {
+  const o = objectForUser(req.params.id, req.user.id);
+  if (!o) return res.status(404).json({ error: 'Object not found' });
+
+  const event = db.prepare('SELECT * FROM events WHERE id=? AND object_id=?').get(req.params.eventId, o.id);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  if (event.image_path) {
+    try { fs.unlinkSync(path.join(uploadDir, event.image_path)); } catch {}
+  }
+
+  db.prepare('DELETE FROM events WHERE id=? AND object_id=?').run(event.id, o.id);
+  db.prepare('UPDATE objects SET updated_at=? WHERE id=?').run(now(), o.id);
+
+  res.json({ ok: true, object: serializeObject(objectForUser(o.id, req.user.id)) });
+});
+
 
 const storage = multer.diskStorage({
   destination: uploadDir,

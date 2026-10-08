@@ -1704,13 +1704,7 @@ function ObjectDetail() {
   );
 
   const [edit, setEdit] = useState(false);
-
-  const [event, setEvent] = useState({
-    type: 'damage',
-    title: 'Damage / change noted',
-    note: '',
-    condition: '',
-  });
+  const toast = useToast();
 
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState('');
@@ -1784,26 +1778,19 @@ function ObjectDetail() {
     setEdit(false);
   };
 
-  const addEvent = async (e) => {
-    e.preventDefault();
-
-    const d = await api(
-      '/objects/' + id + '/events',
-      {
-        method: 'POST',
-        body: JSON.stringify(event),
-      }
-    );
-
-    setObj(d.object);
-
-    setEvent({
-      type: 'damage',
-      title: 'Damage / change noted',
-      note: '',
-      condition: '',
-    });
+  const deleteEvent = async (eventId) => {
+    if (!confirm('Remove this entry from the condition history?')) return;
+    try {
+      const d = await api('/objects/' + id + '/events/' + eventId, {
+        method: 'DELETE',
+      });
+      setObj(d.object);
+      toast.success('Timeline entry removed.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove entry.');
+    }
   };
+
 
   const uploadDoc = async () => {
     if (!file) return;
@@ -2207,15 +2194,15 @@ function ObjectDetail() {
         {tab === 'overview' && (
           <Overview
             obj={obj}
-            onDamage={addEvent}
-            event={event}
-            setEvent={setEvent}
+            onEventAdded={(updated) => setObj(updated)}
+            onDeleteEvent={deleteEvent}
           />
         )}
 
         {tab === 'timeline' && (
-          <Timeline obj={obj} />
+          <Timeline obj={obj} onDeleteEvent={deleteEvent} />
         )}
+
 
         {tab === 'documents' && (
           <Documents
@@ -2416,11 +2403,228 @@ function MarketChart({ history }) {
   );
 }
 
+function AddMemoryForm({ obj, onEventAdded }) {
+  const toast = useToast();
+  const [type, setType] = useState('damage');
+  const [note, setNote] = useState('');
+  const [condition, setCondition] = useState('');
+  const [occurredAt, setOccurredAt] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [photo, setPhoto] = useState(null);
+  const [preview, setPreview] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file (PNG, JPG, WebP).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be 10 MB or smaller.');
+      return;
+    }
+    setPhoto(file);
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhoto(null);
+    setPreview('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const cleanNote = note.trim();
+    if (!cleanNote) {
+      toast.error('Please describe the damage or note before saving.');
+      return;
+    }
+
+    let defaultTitle = 'Damage / scratch noted';
+    if (type === 'repair') defaultTitle = 'Service & repair completed';
+    else if (type === 'incident') defaultTitle = 'Incident reported';
+    else if (type === 'note') defaultTitle = 'Lifecycle note';
+
+    setSaving(true);
+    try {
+      const res = await api('/objects/' + obj.id + '/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          title: defaultTitle,
+          note: cleanNote,
+          condition: condition || obj.condition,
+          occurredAt,
+        }),
+      });
+
+      if (photo && res.event?.id) {
+        const fd = new FormData();
+        fd.append('file', photo);
+        const imgRes = await api(
+          '/objects/' + obj.id + '/events/' + res.event.id + '/image',
+          {
+            method: 'POST',
+            body: fd,
+          }
+        );
+        onEventAdded(imgRes.object);
+      } else {
+        onEventAdded(res.object);
+      }
+
+      toast.success('Condition memory recorded to timeline.');
+      setNote('');
+      setPhoto(null);
+      setPreview('');
+      setCondition('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to record memory.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="addMemoryCard" onSubmit={handleSubmit}>
+      <div className="addMemoryHead">
+        <div className="eyebrow memoryEyebrow">
+          <ShieldAlert size={12} />
+          RECORD DAMAGE OR LIFECYCLE MEMORY
+        </div>
+        <span className="memoryRequiredNotice">* Description required</span>
+      </div>
+
+      <div className="memoryTypeBar">
+        {[
+          { key: 'damage', label: 'Damage / Scratch' },
+          { key: 'incident', label: 'Accident / Drop' },
+          { key: 'repair', label: 'Repair & Service' },
+          { key: 'note', label: 'Milestone Note' },
+        ].map((t) => (
+          <button
+            type="button"
+            key={t.key}
+            className={`memoryTypeBtn ${type === t.key ? 'active' : ''}`}
+            onClick={() => setType(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="memoryInputGroup">
+        <textarea
+          className="memoryTextarea"
+          rows={3}
+          placeholder={
+            type === 'damage'
+              ? 'Describe the damage or scratch in detail (e.g. Scratched bottom chassis while commuting; screen intact)...'
+              : type === 'repair'
+              ? 'Describe the repair or parts replaced (e.g. Replaced display and internal battery at authorized service)...'
+              : 'Describe what happened or record a lifecycle note for this possession...'
+          }
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+
+      <div className="memoryMetaRow">
+        <div className="memoryField">
+          <label>Condition rating after event:</label>
+          <select
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+          >
+            <option value="">Keep current ({obj.condition})</option>
+            <option value="Excellent">Excellent</option>
+            <option value="Good">Good</option>
+            <option value="Fair">Fair</option>
+            <option value="Damaged">Damaged</option>
+            <option value="Needs repair">Needs repair</option>
+          </select>
+        </div>
+
+        <div className="memoryField">
+          <label>Date of occurrence:</label>
+          <input
+            type="date"
+            value={occurredAt}
+            onChange={(e) => setOccurredAt(e.target.value)}
+          />
+        </div>
+
+        <div className="memoryField memoryPhotoField">
+          <label>Evidence photo (optional):</label>
+          <div className="memoryPhotoPicker">
+            <input
+              id="memoryPhotoInput"
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handlePhotoSelect}
+            />
+            {preview ? (
+              <div className="memoryPhotoPreview">
+                <img src={preview} alt="Evidence preview" />
+                <button
+                  type="button"
+                  className="memoryPhotoRemove"
+                  onClick={removePhoto}
+                  title="Remove photo"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <label htmlFor="memoryPhotoInput" className="memoryPhotoBtn">
+                <Camera size={13} />
+                <span>Add photo</span>
+              </label>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="memoryFooter">
+        <span className="memoryCharHint">
+          {note.trim().length === 0
+            ? 'Type description above to enable saving'
+            : `${note.trim().length} characters`}
+        </span>
+
+        <button
+          type="submit"
+          className="btn primary saveMemoryBtn"
+          disabled={saving || !note.trim()}
+        >
+          {saving ? (
+            <>
+              <RefreshCw size={13} className="spin" />
+              Recording…
+            </>
+          ) : (
+            <>
+              <Save size={13} />
+              Record memory to timeline
+            </>
+          )}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function Overview({
   obj,
-  onDamage,
-  event,
-  setEvent,
+  onEventAdded,
+  onDeleteEvent,
 }) {
   return (
     <div className="contentSplit">
@@ -2439,56 +2643,9 @@ function Overview({
           </span>
         </div>
 
-        <TimelineEvents obj={obj} />
+        <TimelineEvents obj={obj} onDeleteEvent={onDeleteEvent} />
 
-        <form
-          className="damageForm"
-          onSubmit={onDamage}
-        >
-          <div className="eyebrow">
-            ADD MEMORY
-          </div>
-
-          <div className="formGrid">
-            <input
-              placeholder="Damage or change note"
-              value={event.note}
-              onChange={(e) =>
-                setEvent({
-                  ...event,
-                  note: e.target.value,
-                })
-              }
-            />
-
-            <select
-              value={event.type}
-              onChange={(e) =>
-                setEvent({
-                  ...event,
-                  type: e.target.value,
-                })
-              }
-            >
-              <option value="damage">
-                Damage note
-              </option>
-
-              <option value="incident">
-                Incident
-              </option>
-
-              <option value="note">
-                General note
-              </option>
-            </select>
-          </div>
-
-          <button className="btn primary small">
-            <Plus size={13} />
-            Save memory
-          </button>
-        </form>
+        <AddMemoryForm obj={obj} onEventAdded={onEventAdded} />
       </div>
 
       <div className="card market">
@@ -2517,7 +2674,15 @@ function Overview({
   );
 }
 
-function TimelineEvents({ obj }) {
+function TimelineEvents({ obj, onDeleteEvent }) {
+  if (!obj.events?.length) {
+    return (
+      <div className="timelineEmpty">
+        No lifecycle events recorded for this possession yet.
+      </div>
+    );
+  }
+
   return (
     <div className="timeline">
       {obj.events.map((e) => (
@@ -2527,14 +2692,32 @@ function TimelineEvents({ obj }) {
         >
           <span className="dot"></span>
 
-          <div>
-            <small>
-              {new Date(
-                e.occurred_at ||
-                  e.created_at
-              ).toLocaleString()}{' '}
-              · {e.type.toUpperCase()}
-            </small>
+          <div className="eventContent">
+            <div className="eventHeader">
+              <small>
+                {new Date(
+                  e.occurred_at || e.created_at
+                ).toLocaleString([], {
+                  year: 'numeric',
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}{' '}
+                · {e.type.toUpperCase()}
+              </small>
+
+              {onDeleteEvent && e.type !== 'created' && (
+                <button
+                  className="eventDeleteBtn"
+                  onClick={() => onDeleteEvent(e.id)}
+                  title="Remove timeline event"
+                  aria-label="Remove event"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
 
             <b>{e.title}</b>
 
@@ -2546,7 +2729,7 @@ function TimelineEvents({ obj }) {
               />
             )}
 
-            <span>{e.note}</span>
+            {e.note && <span className="eventNoteText">{e.note}</span>}
 
             <i>
               {e.condition ||
@@ -2559,7 +2742,7 @@ function TimelineEvents({ obj }) {
   );
 }
 
-function Timeline({ obj }) {
+function Timeline({ obj, onDeleteEvent }) {
   return (
     <div className="singleTab">
       <div className="card">
@@ -2569,11 +2752,12 @@ function Timeline({ obj }) {
 
         <h2>Object timeline</h2>
 
-        <TimelineEvents obj={obj} />
+        <TimelineEvents obj={obj} onDeleteEvent={onDeleteEvent} />
       </div>
     </div>
   );
 }
+
 
 function Documents({ obj, onDelete }) {
   return (

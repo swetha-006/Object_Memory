@@ -1155,3 +1155,273 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* =========================================================
+   CONDITION HISTORY & TIMELINE MEMORY RECORDING
+   ========================================================= */
+.eventHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.eventContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eventDeleteBtn {
+  border: 0;
+  background: transparent;
+  color: #b5aba0;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+.eventDeleteBtn:hover {
+  opacity: 1;
+  color: #a83820;
+  background: #fdeee9;
+}
+
+.eventPhoto {
+  max-width: 160px;
+  max-height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #d5cec2;
+  margin: 4px 0 2px;
+}
+
+.eventNoteText {
+  font-size: 8.5px;
+  color: #524c44;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.timelineEmpty {
+  padding: 16px 0;
+  font-size: 8.5px;
+  color: #9c9387;
+  font-style: italic;
+}
+
+/* Dedicated Add Memory Card */
+.addMemoryCard {
+  border-top: 1px solid #e6ded3;
+  padding-top: 18px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.addMemoryHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.memoryEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #a34b35;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.memoryRequiredNotice {
+  font: 7px 'DM Mono', monospace;
+  color: #a49c90;
+}
+
+.memoryTypeBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.memoryTypeBtn {
+  border: 1px solid #ded5c7;
+  background: #fcfbf9;
+  color: #635d54;
+  border-radius: 6px;
+  padding: 6px 11px;
+  font-size: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.memoryTypeBtn:hover {
+  border-color: #a34b35;
+  color: #a34b35;
+}
+
+.memoryTypeBtn.active {
+  background: #191916;
+  color: #ffffff;
+  border-color: #191916;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.memoryTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dcd4c7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #171614;
+  background: #ffffff;
+  resize: vertical;
+  min-height: 65px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.memoryTextarea:focus {
+  border-color: #a34b35;
+  box-shadow: 0 0 0 2px rgba(163, 75, 53, 0.12);
+}
+
+.memoryMetaRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.memoryField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memoryField label {
+  font: 7px 'DM Mono', monospace;
+  color: #8c8376;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.memoryField select,
+.memoryField input[type="date"] {
+  border: 1px solid #dcd4c7;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 8px;
+  color: #171614;
+  outline: none;
+}
+
+.memoryField select:focus,
+.memoryField input[type="date"]:focus {
+  border-color: #a34b35;
+}
+
+.memoryPhotoField {
+  min-width: 100px;
+}
+
+.memoryPhotoPicker {
+  display: flex;
+  align-items: center;
+}
+
+.memoryPhotoBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px dashed #c8beaf;
+  background: #faf7f2;
+  color: #6d665c;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.memoryPhotoBtn:hover {
+  border-color: #a34b35;
+  color: #a34b35;
+  background: #fdfaf7;
+}
+
+.memoryPhotoPreview {
+  position: relative;
+  width: 44px;
+  height: 34px;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #c8beaf;
+}
+
+.memoryPhotoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.memoryPhotoRemove {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  border: 0;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.memoryFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.memoryCharHint {
+  font: 7px 'DM Mono', monospace;
+  color: #9a9286;
+}
+
+.saveMemoryBtn {
+  padding: 8px 16px;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.saveMemoryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media(max-width: 700px) {
+  .memoryMetaRow {
+    grid-template-columns: 1fr;
+  }
+}
+
