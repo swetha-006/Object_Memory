@@ -1,0 +1,14 @@
+{
+  "remote.portsAttributes": {
+    "5173": {
+      "label": "ObjectMemory Frontend (Vite)",
+      "onAutoForward": "openBrowser",
+      "visibility": "public"
+    },
+    "5000": {
+      "label": "ObjectMemory API Server",
+      "onAutoForward": "silent",
+      "visibility": "public"
+    }
+  }
+}
