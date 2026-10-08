@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   BrowserRouter,
@@ -19,6 +19,7 @@ import {
   FileText,
   PenLine,
   ShieldAlert,
+  ShieldCheck,
   LogOut,
   Settings,
   Clock3,
@@ -41,9 +42,17 @@ import {
   Archive as ArchiveIcon,
   RefreshCw,
   ExternalLink,
+  Copy,
+  Check,
+  Download,
+  FileSpreadsheet,
+  Printer,
 } from 'lucide-react';
-import * as mobilenet from '@tensorflow-models/mobilenet';
-import '@tensorflow/tfjs';
+import { MarkdownView } from './components/MarkdownView';
+import { ToastProvider, useToast } from './components/Toast';
+import { WarrantyBadge } from './components/WarrantyBadge';
+import { InsuranceDossierModal } from './components/InsuranceDossierModal';
+import { detectCategoryFromImage } from './utils/vision';
 import './styles.css';
 
 const API = '/api';
@@ -492,10 +501,7 @@ function ObjectCard({ obj }) {
         </div>
 
         <div className="objFooter">
-          <span className="pill">
-            USER PROVIDED
-          </span>
-
+          <WarrantyBadge warranty={obj.warranty} />
           <ChevronRight size={14} />
         </div>
       </div>
@@ -574,155 +580,126 @@ function buildMemoryAnswer(
     )
   );
 
-  if (
-    /warrant|expire|expiry|renew/.test(q)
-  ) {
+  if (/warrant|expire|expiry|renew|watchdog/.test(q)) {
     if (!warranty.length) {
       return {
-        title: 'No warranty deadline recorded.',
-        text:
-          'I could not find an upcoming warranty expiry in your current archive. Add warranty dates to your objects and I’ll surface them here.',
+        title: 'Warranty Coverage Overview',
+        text: 'I could not find an upcoming warranty expiry date in your current archive. Add warranty dates to your objects and they will appear here.',
       };
     }
 
     const top = warranty
-      .slice(0, 4)
+      .slice(0, 6)
       .map(
         (o) =>
-          `${o.title} — ${
+          `- **${o.title}**: ${
             o.days === 0
-              ? 'today'
-              : `in ${o.days} day${
-                  o.days === 1 ? '' : 's'
-                }`
-          } (${formatMemoryDate(o.warranty)})`
+              ? '**Expires today!**'
+              : `expires in **${o.days} day${o.days === 1 ? '' : 's'}**`
+          } (\`${formatMemoryDate(o.warranty)}\`)`
       )
-      .join(' · ');
+      .join('\n');
 
     return {
-      title: 'Warranty deadlines',
-      text: top,
+      title: 'Upcoming Warranty Deadlines',
+      text: `### Warranty Watchdog\n\n${top}\n\n*Review these items to arrange service before coverage concludes.*`,
     };
   }
 
-  if (
-    /damage|damaged|scratch|crack|incident|repair|broke|broken|change/.test(
-      q
-    )
-  ) {
+  if (/damage|damaged|scratch|crack|incident|repair|broke|broken|change/.test(q)) {
     if (!damage.length) {
       return {
-        title: 'No recent damage recorded.',
-        text:
-          'There are no incident or damage events in the current archive.',
+        title: 'Incident & Damage Audit',
+        text: '✅ **No recent damage recorded:** There are no incident or damage events in your current archive.',
       };
     }
 
     const top = damage
-      .slice(0, 4)
+      .slice(0, 6)
       .map(
         (e) =>
-          `${e.object_title}: ${e.title}${
-            e.note ? ` — ${e.note}` : ''
-          } (${formatMemoryDate(
-            e.occurred_at || e.created_at
-          )})`
+          `- **${e.object_title}** [${formatMemoryDate(e.occurred_at || e.created_at)}]: **${e.title}**${e.note ? ` — ${e.note}` : ''}`
       )
-      .join(' · ');
+      .join('\n');
 
     return {
-      title: 'Recent changes & incidents',
-      text: top,
+      title: 'Recent Changes & Incidents',
+      text: `### Lifecycle Incidents Log\n\n${top}\n\n*Use **Incident Mode** to record new wear or update condition grades.*`,
     };
   }
 
-  if (
-    /new object|new arrival|arriv|added|recent object/.test(
-      q
-    )
-  ) {
+  if (/new object|new arrival|arriv|added|recent object/.test(q)) {
     if (!arrivals.length) {
       return {
-        title: 'No recent arrivals recorded.',
-        text:
-          'Add an object and ObjectMemory will keep its arrival in the living record.',
+        title: 'Recent Arrivals',
+        text: 'Add an object and ObjectMemory will keep its arrival permanently logged in the timeline.',
       };
     }
 
     const top = arrivals
-      .slice(0, 4)
-      .map(
-        (e) =>
-          `${e.object_title} — ${formatMemoryDate(
-            e.created_at
-          )}`
-      )
-      .join(' · ');
+      .slice(0, 6)
+      .map((e) => `- **${e.object_title}** added on \`${formatMemoryDate(e.created_at)}\``)
+      .join('\n');
 
     return {
-      title: 'Recent arrivals',
-      text: top,
+      title: 'Recent Acquisitions',
+      text: `### Catalog Additions\n\n${top}`,
     };
   }
 
-  if (
-    /condition|state|health|needs attention|attention|need/.test(
-      q
-    )
-  ) {
+  if (/condition|state|health|needs attention|attention|need/.test(q)) {
     if (!attention.length) {
       return {
-        title: 'Nothing currently flagged.',
-        text:
-          'No object is marked Fair, Damaged, or Needs repair.',
+        title: 'Condition Health Check',
+        text: '✅ **All in good standing:** No objects are currently marked *Fair*, *Damaged*, or *Needs repair*.',
       };
     }
 
+    const list = attention
+      .map((o) => `- **${o.title}** (${o.category}): Current condition is **${o.condition}**`)
+      .join('\n');
+
     return {
-      title: 'Objects needing attention',
-      text: attention
-        .map(
-          (o) => `${o.title} — ${o.condition}`
-        )
-        .join(' · '),
+      title: 'Possessions Needing Attention',
+      text: `### Attention List\n\n${list}\n\n*Consider scheduling repairs or filing an insurance dossier if needed.*`,
     };
   }
 
-  if (
-    /document|receipt|invoice|paper/.test(q)
-  ) {
+  if (/list|all\s+(objects|items)|what\s+do\s+i\s+own|catalog/.test(q)) {
+    if (!objects.length) {
+      return {
+        title: 'Your Archive Catalog',
+        text: 'Your archive is currently empty. Click **"Add an object"** to get started!',
+      };
+    }
+
+    const list = objects
+      .map((o, idx) => `${idx + 1}. **${o.title}** (${o.category}) — Condition: **${o.condition}** · Value: ${o.value ? '₹' + Number(o.value).toLocaleString() : 'N/A'}`)
+      .join('\n');
+
     return {
-      title: 'Your archive documents',
-      text: `You currently have ${
-        documentCount || 0
-      } recorded document(s) across ${
-        objects.length
-      } object(s).`,
+      title: `Archive Catalog (${objects.length} Items)`,
+      text: `### All Remembered Possessions\n\n${list}`,
     };
   }
 
-  if (
-    /how many|count|many object|own/.test(q)
-  ) {
+  if (/document|receipt|invoice|paper/.test(q)) {
     return {
-      title: 'Your object archive',
-      text: `You currently remember ${
-        objects.length
-      } object${
-        objects.length === 1 ? '' : 's'
-      } in ObjectMemory.`,
+      title: 'Archive Document Vault',
+      text: `You currently have **${documentCount || 0} recorded document(s)** across **${objects.length} possession(s)**.\n\n*All receipts and warranties are securely attached to each item's detail page.*`,
+    };
+  }
+
+  if (/how many|count|many object|own/.test(q)) {
+    return {
+      title: 'Possession Count',
+      text: `You currently remember **${objects.length} possession${objects.length === 1 ? '' : 's'}** in ObjectMemory.`,
     };
   }
 
   return {
-    title: 'Your archive at a glance',
-    text: `${objects.length} object${
-      objects.length === 1 ? '' : 's'
-    }, ${damage.length} recent incident${
-      damage.length === 1 ? '' : 's'
-    }, and ${warranty.length} upcoming warranty deadline${
-      warranty.length === 1 ? '' : 's'
-    } are currently visible to me.`,
+    title: 'Your Archive at a Glance',
+    text: `### Archive Overview\n\n- **Total Possessions:** ${objects.length} item${objects.length === 1 ? '' : 's'}\n- **Recent Incidents:** ${damage.length} recorded incident${damage.length === 1 ? '' : 's'}\n- **Upcoming Warranties:** ${warranty.length} tracked deadline${warranty.length === 1 ? '' : 's'}\n\n*Ask me about any specific item, insurance dossiers, valuations, or warranties!*`,
   };
 }
 
@@ -732,86 +709,226 @@ function DashboardMemory({
   documentCount,
 }) {
   const [q, setQ] = useState('');
-  const [answer, setAnswer] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [askingAi, setAskingAi] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const chatBottomRef = useRef(null);
 
-  const suggestions = [
-    'Which warranties expire soon?',
-    'What damage was recorded recently?',
-    'What objects arrived recently?',
-    'What needs attention?',
-  ];
+  const copyResponse = (text, id) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
-  const ask = (value) => {
-    const question = value || q;
+  const clearChat = () => {
+    setMessages([]);
+    setQ('');
+  };
 
-    setQ(question);
+  useEffect(() => {
+    if (messages.length > 0) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, askingAi]);
 
-    setAnswer(
-      buildMemoryAnswer(
+  const ask = async (value) => {
+    const question = (value || q).trim();
+    if (!question || askingAi) return;
+
+    const userMsgId = 'u-' + Date.now();
+    const assistantMsgId = 'a-' + Date.now();
+    const userMsg = {
+      id: userMsgId,
+      role: 'user',
+      content: question,
+      created_at: new Date().toISOString(),
+    };
+
+    const newHistory = [...messages, userMsg];
+    setMessages(newHistory);
+    setQ('');
+    setAskingAi(true);
+
+    try {
+      const res = await api('/archive/chat', {
+        method: 'POST',
+        body: JSON.stringify({
+          question,
+          history: newHistory.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: res.answer,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } catch (e) {
+      // Local client fallback if server or Groq fails
+      const fallback = buildMemoryAnswer(
         question,
         objects,
         recent,
         documentCount
-      )
-    );
+      );
+
+      const fallbackText = fallback.text
+        ? `### ${fallback.title}\n\n${fallback.text}`
+        : `### Archive Intelligence\n\nI was unable to reach the AI server, but your local archive contains **${objects.length} objects** and **${documentCount} documents**.`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: fallbackText,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setAskingAi(false);
+    }
   };
 
   return (
     <div className="dashboardMemory">
       <div className="dashboardMemoryHead">
         <div>
-          <div className="eyebrow">
-            ASK YOUR MEMORY
+          <div className="eyebrow aiPill">
+            <Sparkles size={11} />
+            WHOLE-PLATFORM & ARCHIVE COPILOT
           </div>
 
-          <h3>A question away.</h3>
+          <h3>Ask ObjectMemory Intelligence</h3>
 
           <p>
-            Ask across your entire archive —
-            warranties, incidents, arrivals,
-            condition, repairs, documents and more.
+            Your master AI copilot with complete awareness of all {objects.length} cataloged possessions,
+            timelines, documents, valuation metrics, and platform workflows.
           </p>
         </div>
 
-        <span className="memoryQuestionMark">?</span>
+        <div className="copilotStatus">
+          <span className="copilotPulse"></span>
+          <span>{objects.length} Objects Synced</span>
+          {messages.length > 0 && (
+            <button
+              className="clearChatBtn"
+              onClick={clearChat}
+              title="Reset conversation"
+            >
+              <RefreshCw size={12} />
+              Reset
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="dashboardAskInput">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) =>
-            e.key === 'Enter' && ask()
-          }
-          placeholder="Which warranties expire soon?"
+          onKeyDown={(e) => e.key === 'Enter' && !askingAi && ask()}
+          placeholder="Ask anything about your possessions, warranties, valuations, or platform features…"
+          disabled={askingAi}
         />
 
-        <button onClick={() => ask()}>
-          <MessageCircle size={15} />
-          Ask ObjectMemory
-          <ArrowRight size={14} />
+        <button
+          onClick={() => ask()}
+          disabled={askingAi || !q.trim()}
+          className="askSubmitBtn"
+        >
+          {askingAi ? (
+            <>
+              <RefreshCw size={14} className="spin" />
+              <span>Analyzing…</span>
+            </>
+          ) : (
+            <>
+              <Send size={14} />
+              <span>Ask Copilot</span>
+            </>
+          )}
         </button>
       </div>
 
-      <div className="memorySuggestions">
-        {suggestions.map((s) => (
-          <button
-            key={s}
-            onClick={() => ask(s)}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+      {(messages.length > 0 || askingAi) && (
+        <div className="dashboardChatStream">
+          {messages.map((m) => {
+            if (m.role === 'user') {
+              return (
+                <div className="msg userMsg" key={m.id}>
+                  <b>You</b>
+                  <span>{m.content}</span>
+                </div>
+              );
+            }
 
-      {answer && (
-        <div className="memoryAnswer">
-          <div>
-            <Sparkles size={14} />
-            <b>{answer.title}</b>
-          </div>
+            return (
+              <div className="msg assistantMsg copilotAssistantMsg" key={m.id}>
+                <div className="assistantHeader">
+                  <span className="assistantBadge">
+                    <Sparkles size={12} />
+                    Platform Assistant
+                  </span>
 
-          <p>{answer.text}</p>
+                  <div className="assistantTools">
+                    <button
+                      className="copyBtn"
+                      onClick={() => copyResponse(m.content, m.id)}
+                      title="Copy response"
+                    >
+                      {copiedId === m.id ? (
+                        <>
+                          <Check size={11} /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={11} /> Copy
+                        </>
+                      )}
+                    </button>
+
+                    {m.created_at && (
+                      <span className="msgTimestamp">
+                        {new Date(m.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <MarkdownView content={m.content} />
+              </div>
+            );
+          })}
+
+          {askingAi && (
+            <div className="msg assistantMsg copilotAssistantMsg typingMsg">
+              <div className="assistantHeader">
+                <span className="assistantBadge">
+                  <Sparkles size={12} />
+                  Analyzing entire archive & platform records…
+                </span>
+              </div>
+              <div className="copilotLoadingState">
+                <span className="typingDot"></span>
+                <span className="typingDot"></span>
+                <span className="typingDot"></span>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatBottomRef} />
         </div>
       )}
     </div>
@@ -909,6 +1026,12 @@ function Dashboard() {
           />
 
           <Stat
+            icon={<ShieldCheck size={14} />}
+            value={d.stats.totalValue ? '₹' + Number(d.stats.totalValue).toLocaleString() : '₹0'}
+            label="Archive valuation"
+          />
+
+          <Stat
             icon={<AlertTriangle size={14} />}
             value={String(d.stats.incidents).padStart(
               2,
@@ -925,13 +1048,30 @@ function Dashboard() {
             )}
             label="Documents"
           />
-
-          <Stat
-            icon={<LockKeyhole size={14} />}
-            value="100%"
-            label="Private by design"
-          />
         </div>
+
+        {d.analytics?.upcomingWarranties?.length > 0 && (
+          <div className="watchdogSection">
+            <div className="watchdogHead">
+              <div className="watchdogTitle">
+                <ShieldAlert size={16} />
+                <span>Warranty Watchdog: Upcoming Deadlines</span>
+              </div>
+              <span className="pill warn">{d.analytics.upcomingWarranties.length} Tracked</span>
+            </div>
+            <div className="watchdogGrid">
+              {d.analytics.upcomingWarranties.slice(0, 6).map((w) => (
+                <Link to={`/objects/${w.id}?tab=overview`} key={w.id} className="watchdogCard">
+                  <div className="watchdogCardInfo">
+                    <b>{w.title}</b>
+                    <small>{w.category} · Expiry: {w.expiryDate}</small>
+                  </div>
+                  <WarrantyBadge warranty={w.warranty} />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DashboardMemory
           objects={d.objects}
@@ -1051,150 +1191,6 @@ function Dashboard() {
   );
 }
 
-const CATEGORY_RULES = {
-  Car: [
-    'car',
-    'sports car',
-    'convertible',
-    'minivan',
-    'limousine',
-    'jeep',
-    'pickup',
-    'racer',
-    'cab',
-    'taxi',
-    'vehicle',
-    'automobile',
-  ],
-
-  Computer: [
-    'laptop',
-    'notebook',
-    'desktop computer',
-    'computer keyboard',
-    'monitor',
-    'screen',
-  ],
-
-  Phone: [
-    'cellular telephone',
-    'mobile phone',
-    'telephone',
-  ],
-
-  Camera: [
-    'camera',
-    'digital camera',
-    'reflex camera',
-    'lens cap',
-  ],
-
-  Furniture: [
-    'chair',
-    'couch',
-    'sofa',
-    'desk',
-    'table',
-    'bookcase',
-    'wardrobe',
-    'cabinet',
-    'studio couch',
-  ],
-
-  Jewellery: [
-    'necklace',
-    'chain',
-    'ring',
-    'earring',
-    'bracelet',
-    'jewelry',
-  ],
-
-  Document: [
-    'envelope',
-    'menu',
-    'book jacket',
-    'notebook',
-  ],
-};
-
-let visionModelPromise = null;
-
-async function detectCategoryFromImage(file) {
-  if (!file) {
-    return {
-      category: 'Other',
-      label: '',
-      confidence: 0,
-    };
-  }
-
-  try {
-    visionModelPromise ||= mobilenet.load({
-      version: 2,
-      alpha: 1.0,
-    });
-
-    const model = await visionModelPromise;
-
-    const url = URL.createObjectURL(file);
-
-    const img = new Image();
-    img.src = url;
-
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
-
-    const predictions = await model.classify(
-      img,
-      5
-    );
-
-    URL.revokeObjectURL(url);
-
-    for (const p of predictions) {
-      const label = p.className.toLowerCase();
-
-      for (const [
-        category,
-        terms,
-      ] of Object.entries(CATEGORY_RULES)) {
-        if (
-          terms.some((term) =>
-            label.includes(term)
-          )
-        ) {
-          return {
-            category,
-            label: p.className,
-            confidence: p.probability,
-          };
-        }
-      }
-    }
-
-    return {
-      category: 'Other',
-      label:
-        predictions[0]?.className || '',
-      confidence:
-        predictions[0]?.probability || 0,
-    };
-  } catch (err) {
-    console.warn(
-      'Local image classification unavailable:',
-      err
-    );
-
-    return {
-      category: 'Other',
-      label: '',
-      confidence: 0,
-    };
-  }
-}
 
 function ImagePlaceholder({ large = false }) {
   return (
@@ -1696,8 +1692,10 @@ function ObjectDetail() {
   const { id } = useParams();
   const location = useLocation();
   const nav = useNavigate();
+  const { user } = useAuth();
 
   const [obj, setObj] = useState(null);
+  const [dossier, setDossier] = useState(false);
 
   const [tab, setTab] = useState(
     new URLSearchParams(location.search).get(
@@ -1763,7 +1761,7 @@ function ObjectDetail() {
   };
 
   useEffect(() => {
-    if (tab === 'market') loadMarket(true);
+    if (tab === 'market') loadMarket(false);
   }, [id, tab]);
 
   if (!obj) {
@@ -1858,26 +1856,92 @@ function ObjectDetail() {
     }
   };
 
-  const send = async () => {
-    if (!message.trim() || busy) return;
+  const send = async (explicitText) => {
+    const text = (typeof explicitText === 'string' ? explicitText : message).trim();
+    if (!text || busy) return;
 
     setBusy(true);
+    setMessage('');
+
+    const tempUserId = 'user-' + Date.now();
+    const tempAssistantId = 'ai-' + Date.now();
+
+    setMessages((prev) => [
+      ...prev,
+      { id: tempUserId, role: 'user', content: text, created_at: new Date().toISOString() },
+      { id: tempAssistantId, role: 'assistant', content: '', created_at: new Date().toISOString() }
+    ]);
+
+    const token = localStorage.getItem('om_token');
 
     try {
-      const d = await api(
-        '/objects/' + id + '/chat',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            message,
-          }),
-        }
-      );
+      const response = await fetch(API + '/objects/' + id + '/chat?stream=1', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ message: text })
+      });
 
-      setMessages(d.messages);
-      setMessage('');
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || `Request failed with ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const d = await response.json();
+        setMessages(d.messages);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamed = '';
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const dataStr = trimmed.slice(6);
+          if (dataStr === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(dataStr);
+            if (data.error) throw new Error(data.error);
+            if (data.chunk) {
+              streamed += data.chunk;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === tempAssistantId ? { ...m, content: streamed } : m
+                )
+              );
+            }
+            if (data.done && data.messages) {
+              setMessages(data.messages);
+            }
+          } catch (err) {
+            if (err.message && err.message !== 'Unexpected end of JSON input') {
+              console.error('Stream chunk error:', err);
+            }
+          }
+        }
+      }
     } catch (e) {
-      alert(e.message);
+      alert(e.message || 'Error communicating with assistant');
+      api('/objects/' + id + '/chat')
+        .then((x) => setMessages(x.messages))
+        .catch(() => {});
     } finally {
       setBusy(false);
     }
@@ -1997,9 +2061,7 @@ function ObjectDetail() {
             </div>
 
             <div className="tags">
-              <span className="pill">
-                USER PROVIDED
-              </span>
+              <WarrantyBadge warranty={obj.warranty} />
 
               {obj.condition === 'Damaged' && (
                 <span className="pill warn">
@@ -2060,6 +2122,14 @@ function ObjectDetail() {
               >
                 <PenLine size={13} />
                 Edit details
+              </button>
+
+              <button
+                className="btn ghost"
+                onClick={() => setDossier(true)}
+              >
+                <ShieldCheck size={13} />
+                Insurance Dossier
               </button>
 
               <button
@@ -2180,6 +2250,14 @@ function ObjectDetail() {
             obj={obj}
             onClose={() => setEdit(false)}
             onSave={saveEdit}
+          />
+        )}
+
+        {dossier && (
+          <InsuranceDossierModal
+            obj={obj}
+            user={user}
+            onClose={() => setDossier(false)}
           />
         )}
       </div>
@@ -2579,6 +2657,28 @@ function AskAI({
   send,
   busy,
 }) {
+  const [copiedId, setCopiedId] = useState(null);
+  const chatBottomRef = useRef(null);
+
+  const copyResponse = (text, id) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, busy]);
+
+  const promptSuggestions = [
+    'What could cause it to overheat?',
+    'Is my warranty still valid?',
+    'Care and maintenance guidelines',
+    'Summarize condition and past incidents',
+    'Compare recorded value with current market'
+  ];
+
   return (
     <div className="singleTab">
       <div className="card aiCard">
@@ -2589,64 +2689,110 @@ function AskAI({
         <h2>Talk to your object.</h2>
 
         <p>
-          I answer from the information stored
-          for this object. No external AI service
-          is required for the local build.
+          I can answer questions about this possession using its verified details and memory, including care, troubleshooting, warranty deadlines, valuation, and past incident history.
         </p>
 
         <div className="chat">
           {!messages.length && (
-            <div className="answer">
-              <b>Assistant</b>
-
-              <span>
-                Ask me about {obj.title}:
-                condition, damage, warranty,
-                documents, purchase date, value or
-                history.
-              </span>
+            <div className="msg assistantMsg">
+              <div className="assistantHeader">
+                <span className="assistantBadge">
+                  <Sparkles size={12} />
+                  ObjectMemory Assistant
+                </span>
+              </div>
+              <MarkdownView
+                content={`Hello! I am your AI assistant for **${obj.title}** (${obj.category}).\n\nAsk me anything about this item: troubleshooting, care guidelines, warranty status, maintenance, or recorded history.`}
+              />
             </div>
           )}
 
-          {messages.map((m) => (
-            <div
-              className={
-                m.role === 'user'
-                  ? 'msg userMsg'
-                  : 'msg'
-              }
-              key={m.id}
-            >
-              <b>
-                {m.role === 'user'
-                  ? 'You'
-                  : 'ObjectMemory'}
-              </b>
+          {messages.map((m) => {
+            if (m.role === 'user') {
+              return (
+                <div className="msg userMsg" key={m.id}>
+                  <b>You</b>
+                  <span>{m.content}</span>
+                </div>
+              );
+            }
 
-              <span>{m.content}</span>
-            </div>
+            return (
+              <div className="msg assistantMsg" key={m.id}>
+                <div className="assistantHeader">
+                  <span className="assistantBadge">
+                    <Sparkles size={12} />
+                    ObjectMemory Assistant
+                  </span>
+
+                  <div className="assistantTools">
+                    <button
+                      className="copyBtn"
+                      onClick={() => copyResponse(m.content, m.id)}
+                      title="Copy response"
+                    >
+                      {copiedId === m.id ? (
+                        <>
+                          <Check size={11} /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={11} /> Copy
+                        </>
+                      )}
+                    </button>
+
+                    {m.created_at && (
+                      <span className="msgTimestamp">
+                        {new Date(m.created_at).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <MarkdownView content={m.content} />
+                {busy && !m.content && <span className="typingCursor">▋</span>}
+              </div>
+            );
+          })}
+          <div ref={chatBottomRef} />
+        </div>
+
+        <div className="chatPromptSuggestions">
+          {promptSuggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              className="chatPromptChip"
+              onClick={() => {
+                setMessage(suggestion);
+                send(suggestion);
+              }}
+              disabled={busy}
+            >
+              {suggestion}
+            </button>
           ))}
         </div>
 
         <div className="qaBox">
           <input
             value={message}
-            onChange={(e) =>
-              setMessage(e.target.value)
-            }
-            onKeyDown={(e) =>
-              e.key === 'Enter' && send()
-            }
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
             placeholder="Ask about this object…"
+            disabled={busy}
           />
 
           <button
             className="btn primary"
-            onClick={send}
-            disabled={busy}
+            onClick={() => send()}
+            disabled={busy || !message.trim()}
           >
             <Send size={13} />
-            {busy ? 'Thinking…' : 'Ask'}
+            {busy ? 'Streaming…' : 'Ask'}
           </button>
         </div>
       </div>
@@ -3262,6 +3408,85 @@ function SettingsPage() {
   const user = JSON.parse(
     localStorage.getItem('om_user') || '{}'
   );
+  const toast = useToast();
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const exportJson = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('om_token');
+      const res = await fetch('/api/archive/export', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `objectmemory-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Archive backup exported successfully!');
+    } catch (e) {
+      toast.error(e.message || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportCsv = async () => {
+    try {
+      const data = await api('/objects');
+      const objects = data.objects || [];
+      const headers = ['ID', 'Title', 'Brand', 'Model', 'Category', 'Condition', 'Purchase Date', 'Value', 'Warranty', 'Serial'];
+      const rows = objects.map(o => [
+        o.id,
+        `"${(o.title || '').replace(/"/g, '""')}"`,
+        `"${(o.brand || '').replace(/"/g, '""')}"`,
+        `"${(o.model || '').replace(/"/g, '""')}"`,
+        `"${(o.category || '').replace(/"/g, '""')}"`,
+        `"${(o.condition || '').replace(/"/g, '""')}"`,
+        `"${(o.purchase_date || '').replace(/"/g, '""')}"`,
+        `"${(o.value || '').replace(/"/g, '""')}"`,
+        `"${(o.warranty || '').replace(/"/g, '""')}"`,
+        `"${(o.serial || '').replace(/"/g, '""')}"`,
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `objectmemory-catalog-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Catalog CSV exported successfully!');
+    } catch (e) {
+      toast.error(e.message || 'CSV export failed');
+    }
+  };
+
+  const importJson = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setImporting(true);
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const payload = json.data || json;
+      const res = await api('/archive/import', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      toast.success(`Successfully restored ${res.imported || 0} possessions!`);
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      toast.error('Import failed: ' + err.message);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
 
   return (
     <Shell>
@@ -3290,7 +3515,48 @@ function SettingsPage() {
           <span>Local account</span>
         </div>
 
-        <div className="card">
+        <div className="backupCard">
+          <div className="eyebrow">DATA PORTABILITY & BACKUP</div>
+          <h2>Export & Restore Archive</h2>
+          <p>
+            Safely download your complete ObjectMemory vault (including all possession histories, timeline logs, and documents metadata) or restore an existing backup.
+          </p>
+
+          <div className="backupGrid">
+            <div className="backupActionBox">
+              <b>Export Vault (JSON)</b>
+              <p>Download your entire archive in portable JSON format for safekeeping or migrating.</p>
+              <button className="btn primary small" onClick={exportJson} disabled={exporting}>
+                <Download size={13} />
+                {exporting ? 'Exporting...' : 'Export JSON Backup'}
+              </button>
+            </div>
+
+            <div className="backupActionBox">
+              <b>Export Catalog (CSV)</b>
+              <p>Download an inventory spreadsheet of your possessions with values and conditions.</p>
+              <button className="btn ghost small" onClick={exportCsv}>
+                <FileSpreadsheet size={13} />
+                Export CSV Catalog
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '16px' }} className="backupActionBox">
+            <b>Restore Archive (JSON)</b>
+            <p>Upload a previously exported ObjectMemory JSON backup file to restore records.</p>
+            <input
+              type="file"
+              accept=".json"
+              onChange={importJson}
+              disabled={importing}
+              style={{ marginTop: '6px', fontSize: '9px' }}
+            />
+            {importing && <span style={{ fontSize: '8px', color: '#a54128' }}>Importing records into vault...</span>}
+          </div>
+        </div>
+
+        <div className="card" style={{ marginTop: '16px' }}>
           <div className="eyebrow">
             STORAGE
           </div>
@@ -3300,7 +3566,7 @@ function SettingsPage() {
           <p>
             Your objects, events, documents and AI
             conversations are stored in the local
-            SQLite database inside this project.
+            SQLite database inside this project with WAL mode enabled.
           </p>
         </div>
       </div>
@@ -3387,6 +3653,8 @@ createRoot(
   document.getElementById('root')
 ).render(
   <BrowserRouter>
-    <App />
+    <ToastProvider>
+      <App />
+    </ToastProvider>
   </BrowserRouter>
 );

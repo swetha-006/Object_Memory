@@ -6,24 +6,28 @@
 
 ### Give your possessions a memory.
 
-A full-stack personal archive that tracks the **history, condition, documents, incidents and market value** of everything you own, with an on-device AI assistant that answers from *your* data.
+A production-grade personal vault and archive that tracks the **history, condition, documents, incidents, insurance dossiers, and market value** of everything you own, powered by an on-device vision engine and whole-platform AI intelligence.
 
 <p>
   <img alt="Node" src="https://img.shields.io/badge/Node.js-22.5%2B-339933?logo=node.js&logoColor=white" />
-  <img alt="React" src="https://img.shields.io/badge/React-Vite-61DAFB?logo=react&logoColor=black" />
-  <img alt="Express" src="https://img.shields.io/badge/API-Express-000000?logo=express&logoColor=white" />
-  <img alt="SQLite" src="https://img.shields.io/badge/DB-SQLite%20(WAL)-003B57?logo=sqlite&logoColor=white" />
-  <img alt="TensorFlow.js" src="https://img.shields.io/badge/ML-TensorFlow.js%20MobileNet-FF6F00?logo=tensorflow&logoColor=white" />
-  <img alt="Auth" src="https://img.shields.io/badge/Auth-JWT%20%2B%20bcrypt-blueviolet" />
+  <img alt="React" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" />
+  <img alt="Vite" src="https://img.shields.io/badge/Bundler-Vite%208-646CFF?logo=vite&logoColor=white" />
+  <img alt="Express" src="https://img.shields.io/badge/API-Express%20(Hardened)-000000?logo=express&logoColor=white" />
+  <img alt="SQLite" src="https://img.shields.io/badge/DB-SQLite%20(WAL%20mode)-003B57?logo=sqlite&logoColor=white" />
+  <img alt="TensorFlow.js" src="https://img.shields.io/badge/Vision-TensorFlow.js%20MobileNet%20v2-FF6F00?logo=tensorflow&logoColor=white" />
+  <img alt="AI Engine" src="https://img.shields.io/badge/AI-Groq%20%2B%20Deterministic%20Fallback-F05032" />
+  <img alt="Security" src="https://img.shields.io/badge/Security-Helmet%20%2B%20RateLimit-blueviolet" />
   <img alt="License" src="https://img.shields.io/badge/License-MIT-green" />
 </p>
 
-[Features](#-features) ·
+[Key Features](#-features) ·
 [Quick Start](#-quick-start) ·
 [Architecture](#-architecture) ·
-[API](#-api-reference) ·
-[Market Trends](#-market-trend-tracking) ·
-[Roadmap](#-roadmap)
+[Platform Intelligence](#-platform--archive-ai-intelligence) ·
+[Insurance Dossiers](#-certified-insurance-claim-dossiers) ·
+[Data Portability](#-data-portability--backups) ·
+[API Reference](#-api-reference) ·
+[Market Tracking](#-market-trend-tracking)
 
 </div>
 
@@ -31,9 +35,14 @@ A full-stack personal archive that tracks the **history, condition, documents, i
 
 ## Why ObjectMemory?
 
-Receipts fade. Warranty cards vanish. Nobody remembers when that scratch appeared on the laptop, and insurers want proof.
+Receipts fade, warranty cards vanish, and nobody remembers when a hairline crack appeared on an expensive possession. When disaster strikes, insurance loss adjusters demand rigorous proof of ownership, serials, and historical condition.
 
-**ObjectMemory** turns every object you own into a living record: what it is, when you bought it, what shape it's in, what happened to it, and what it's worth today. Everything is stored **locally** in SQLite. No cloud account, no paid AI key, no data leaving your machine (unless you opt in to market lookups).
+**ObjectMemory** transforms physical possessions into an immutable, living digital vault:
+- **What it is**: Verified specs, make, model, serial, purchase date, and replacement value.
+- **How it aged**: Chronological timeline of condition changes, incidents, and dated photographic proof.
+- **Proof when it matters**: One-click official certified Insurance Claim Dossiers and warranty watchdog alerts.
+- **Whole-Platform Copilot**: An executive AI assistant with complete archive context across all possessions, valuations, and platform capabilities.
+- **Privacy & Security by Design**: 100% on-device MobileNet vision, local SQLite storage in WAL mode, rate-limited APIs, and complete JSON/CSV data portability.
 
 ---
 
@@ -41,242 +50,251 @@ Receipts fade. Warranty cards vanish. Nobody remembers when that scratch appeare
 
 | | Feature | Details |
 |---|---|---|
-| 🗂️ | **Object Archive** | Add, edit, delete and search objects by name, category or subtitle. Fields for brand, model, origin, serial, purchase date, value and warranty. |
-| 📷 | **Photo-based category detection** | Upload a photo and **MobileNet v2 (TensorFlow.js)** runs *in the browser* to suggest a category (Car, Computer, Phone, Camera, ...). Nothing is uploaded for inference. |
-| 🩺 | **Condition tracking** | Excellent / Good / Fair / Damaged / Needs repair, with automatic timeline events whenever condition changes. |
-| 🚨 | **Incident & damage logging** | A dedicated incident flow: pick an object, describe the change, attach a dated photo. AI suggests an observation, and you verify it before saving ("keep the record honest"). |
-| 🕰️ | **Memory timeline** | Chronological history per object: creation, condition changes, photos, documents, incidents, notes. Each event supports its own image. |
-| 📄 | **Document vault** | Upload receipts, manuals and warranty PDFs (10 MB limit) and open or delete them. Stored on disk with UUID filenames. |
-| 💬 | **Ask AI (local)** | Per-object chat answering questions about condition, damage, purchase date, warranty, serial and value. Conversations persist in SQLite. **Deterministic and rule-based, so it never invents facts.** |
-| 🧠 | **Archive-wide Q&A** | The dashboard assistant answers across all objects: upcoming warranty expiries, recent damage, new arrivals, what needs attention. |
-| 📈 | **Market trend tracking** | Live Google Shopping prices via SerpApi, stored as **dated snapshots**. The trend is computed from real observations, never fabricated. |
-| 🔐 | **Authentication** | Register/login, bcrypt-hashed passwords, 7-day JWT sessions, per-user data isolation. |
-| 📊 | **Dashboard** | Totals for objects, incidents and documents, plus a recent-activity feed. |
+| 🗂️ | **Object Catalog Vault** | Add, edit, delete, and search possessions by name, category, brand, model, serial, or subtitle. Tracks purchase date, replacement value, and warranty. |
+| 🤖 | **Whole-Platform AI Copilot** | Executive multi-turn AI assistant on the Home Dashboard with complete context of all possessions, portfolio valuations, warranty deadlines, and platform guides. |
+| 💬 | **Per-Object Interactive Assistant** | Dedicated AI chat for every possession with streaming responses (SSE), GFM Markdown rendering, copy-to-clipboard, timestamps, and troubleshooting advice. |
+| 🛡️ | **Certified Insurance Dossiers** | One-click official certified proof-of-possession PDF reports with unique claim IDs, verified serials, high-resolution evidence, timeline history, and signature blocks. |
+| 🚨 | **Warranty Watchdog** | Proactive expiration monitoring with real-time countdown badges (< 30 days urgent alert, active validity, expired notice) and a dedicated dashboard section. |
+| 📷 | **On-Device Computer Vision** | In-browser **MobileNet v2 (TensorFlow.js)** auto-categorizes uploaded photos (Cars, Computers, Phones, Cameras, Watches, etc.) with **zero cloud uploads**. |
+| 🩺 | **Living Lifecycle Timeline** | Chronological audit trail per item: creation events, condition shifts (Excellent, Good, Fair, Damaged, Needs repair), incident notes, and photo attachments. |
+| 📄 | **Document Vault** | Secure storage for purchase receipts, user manuals, and warranty cards (PDFs/images up to 10 MB). Stored on disk with UUID filenames. |
+| 💾 | **100% Data Portability** | One-click full JSON encrypted vault export/restore and CSV inventory spreadsheet generation in Settings. |
+| 📈 | **Market Trend Observation** | Live Google Shopping retail price monitoring via SerpApi, stored as dated median snapshots with SVG price trajectory charts (Rising, Falling, Stable). |
+| 🔒 | **Enterprise Security Hardening** | Helmet HTTP security headers, CORS isolation, rate-limiting on auth/chat/market endpoints, bcrypt hashing, and 7-day JWT sessions. |
+| 🎨 | **Luxury Editorial Design System** | Modern typography featuring **Plus Jakarta Sans**, **Libre Baskerville**, and **DM Mono**, paired with frosted glassmorphic navigation and obsidian-gold aesthetic. |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | React, React Router, Vite, lucide-react icons |
-| **On-device ML** | `@tensorflow/tfjs` + `@tensorflow-models/mobilenet` (v2, α = 1.0) |
-| **Backend** | Node.js, Express, CORS, Multer (file uploads) |
-| **Database** | Built-in **`node:sqlite`** (`DatabaseSync`) with WAL mode and foreign keys, so no native build step |
-| **Auth** | `jsonwebtoken`, `bcryptjs` |
-| **Market data** | SerpApi (Google Shopping), optional |
-| **Dev tooling** | `concurrently` runs API and client together |
+| Layer | Technology | Details |
+|---|---|---|
+| **Frontend** | React 18, React Router v6, Vite 8, Lucide React | Modern SPA architecture with responsive CSS design tokens and smooth transitions. |
+| **Typography** | Google Fonts | `Plus Jakarta Sans` (UI), `Libre Baskerville` (editorial serif), `DM Mono` (metadata/code). |
+| **Markdown** | `marked` | GitHub Flavored Markdown renderer with support for headers, tables, code blocks, and blockquotes. |
+| **On-device ML** | TensorFlow.js + MobileNet v2 | In-browser image classification lazy-loaded to keep main bundles compact (~380 kB). |
+| **Backend** | Node.js 22+, Express | Hardened REST API with Helmet, rate limiters, and CORS protection. |
+| **Database** | Built-in **`node:sqlite`** (`DatabaseSync`) | Zero-dependency SQLite engine running in high-performance **WAL mode** with foreign keys. |
+| **AI Engine** | Groq Cloud + Deterministic Fallback | Supports LLMs (e.g. `qwen/qwen3.8-27b`) with offline deterministic fallback engines. |
+| **Auth** | `jsonwebtoken`, `bcryptjs` | Bcrypt password hashing (salt rounds: 10), signed JWT authentication, and tenant isolation. |
+| **Market Data** | SerpApi (Google Shopping) | Retail price aggregation and daily median trend analysis. |
 
 ---
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph Browser["Browser (React + Vite :5173)"]
-        UI[Pages: Dashboard · Archive · Object · Incident · Settings]
-        ML[TensorFlow.js MobileNet<br/>category detection]
-        UI --- ML
+flowchart TD
+    subgraph Client["Browser (React + Vite :5173)"]
+        UI["Executive UI: Dashboard · Archive · Object Vault · Incident Mode · Settings"]
+        VISION["TensorFlow.js MobileNet v2 (100% In-Browser Inference)"]
+        MD["Markdown Engine & Insurance PDF Generator"]
+        UI --- VISION
+        UI --- MD
     end
 
-    subgraph Server["Express API :5000"]
-        AUTH[JWT auth middleware]
-        ROUTES[REST routes]
-        BOT[Rule-based assistant]
-        MKT[Market service<br/>median + trend]
+    subgraph Security["API Gateway & Security (Port :5000)"]
+        HELMET["Helmet Security Headers"]
+        LIMIT["Express Rate Limiters (Auth / Chat / Market)"]
+        AUTH["JWT Tenant Authentication"]
     end
 
-    DB[(SQLite · WAL<br/>data/objectmemory.sqlite)]
-    FS[[uploads/<br/>images & documents]]
-    SERP[(SerpApi<br/>Google Shopping)]
+    subgraph Core["Express Backend Services"]
+        OBJ_SVC["Object & Lifecycle Timeline Service"]
+        DOC_SVC["Document Vault & Storage (UUID)"]
+        MKT_SVC["Market Trend Engine (Daily Medians)"]
+        AI_ROUTER["AI Assistant Engine"]
+    end
 
-    UI -- "/api (Vite proxy)" --> AUTH --> ROUTES
-    ROUTES --> DB
-    ROUTES --> FS
-    ROUTES --> BOT --> DB
-    ROUTES --> MKT --> DB
-    MKT -. optional .-> SERP
+    subgraph Intelligence["AI Layer"]
+        GROQ["Groq LLM API (Streaming SSE)"]
+        FALLBACK["Deterministic Fallback Engine (Offline)"]
+    end
+
+    subgraph Storage["Storage Layer"]
+        DB[("SQLite WAL Database (data/objectmemory.sqlite)")]
+        UPLOADS[["Disk Storage (uploads/)"]]
+    end
+
+    UI -- "/api (Vite Proxy)" --> HELMET --> LIMIT --> AUTH
+    AUTH --> Core
+    AI_ROUTER --> GROQ
+    AI_ROUTER -. Fallback .-> FALLBACK
+    Core --> DB
+    DOC_SVC --> UPLOADS
 ```
 
-In development, Vite proxies `/api` and `/uploads` to the Express server, so the browser only ever talks to one origin.
+---
 
-### Data model
+## Platform & Archive AI Intelligence
 
-```mermaid
-erDiagram
-    users ||--o{ objects : owns
-    objects ||--o{ events : "timeline"
-    objects ||--o{ documents : stores
-    objects ||--o{ chat_messages : "AI chat"
-    objects ||--o{ market_snapshots : "price history"
-    users ||--o{ chat_messages : writes
-```
+ObjectMemory features a dual-tiered AI assistant architecture:
 
-| Table | Purpose |
-|---|---|
-| `users` | Accounts (name, email, bcrypt hash) |
-| `objects` | The archive: title, brand, model, category, condition, purchase date, value, warranty, serial, origin, image |
-| `events` | Timeline entries: `created`, `condition`, `damage`, `incident`, `note`, `photo`, `document` |
-| `documents` | Uploaded file metadata (original name, stored name, MIME type, size) |
-| `chat_messages` | Persistent per-object AI conversation |
-| `market_snapshots` | Dated price observations (`price`, `currency`, `source`, `title`, `url`) indexed by `(object_id, observed_at)` |
+### 1. Whole-Platform & Archive Copilot (`/api/archive/chat`)
+Positioned prominently on the Home Dashboard, this assistant has full visibility across your entire vault:
+- **Portfolio Valuation**: Instant calculation of total replacement costs and breakdown by asset category.
+- **Warranty Watchdog**: Proactive notifications for upcoming coverage expirations (< 30 days).
+- **Condition Audits**: Flags items marked *Damaged*, *Fair*, or *Needs repair*, alongside recent incident notes.
+- **Platform Workflows**: Step-by-step guidance on creating insurance dossiers, logging incidents, and backing up data.
+- **Multi-Turn Context**: Maintains conversational memory so you can ask natural follow-ups about specific items.
+- **Elegant, Minimalist UI**: An executive obsidian-and-gold card with live object synchronization indicators (`● X Objects Synced`) that expands smoothly upon interaction.
 
-Schema creation and lightweight column migrations run automatically on server start.
+### 2. Possession-Level Assistant (`/api/objects/:id/chat`)
+Within any individual possession's view, the assistant specializes in that item's verified records:
+- Provides care, maintenance, and troubleshooting advice.
+- Explains observed market price movements.
+- Cross-references recorded purchase dates, serials, and warranty status.
+- Supports Server-Sent Events (SSE) streaming with live cursor animation and one-click copy buttons.
+
+> **Resilient Fallback Guarantee**: If `GROQ_API_KEY` is omitted or an external network drops, ObjectMemory automatically transitions to its built-in **Deterministic Knowledge Engine**, guaranteeing rich, structured answers without downtime.
+
+---
+
+## Certified Insurance Claim Dossiers
+
+When filing an insurance claim or substantiating replacement value, adjusters require verified documentation. 
+
+ObjectMemory features an integrated **Insurance Dossier Generator**:
+1. Open any possession and click **"Insurance Dossier"**.
+2. The system compiles:
+   - Official unique claim reference ID (e.g. `OM-CLAIM-1-B8F4`).
+   - High-resolution asset photographs and verified serial numbers.
+   - Complete chronological lifecycle timeline table with condition changes and incident notes.
+   - Attached document manifest (invoices, receipts, warranty certificates).
+   - Policyholder certification declaration and signature block.
+3. Click **"Print / Save PDF Dossier"** for a clean, professional print layout with CSS page breaks and insurance header styling.
+
+---
+
+## Data Portability & Backups
+
+You own your data completely. ObjectMemory provides full data portability directly from the **Settings** view:
+
+- **JSON Vault Export (`GET /api/archive/export`)**: Downloads an encrypted, immutable JSON archive of all possessions, timeline entries, document manifests, and chat history.
+- **JSON Vault Restore (`POST /api/archive/import`)**: Restores an entire backup into your local SQLite database with zero data loss.
+- **CSV Catalog Export**: Generates an inventory spreadsheet compatible with Microsoft Excel, Google Sheets, or Apple Numbers.
+
+---
+
+## Market Trend Tracking
+
+When viewing any possession, navigate to the **Market** tab and click **Refresh market**:
+
+1. The server constructs a targeted query from `brand + model + title + subtitle`.
+2. It queries Google Shopping listings in your configured region (`MARKET_GL`).
+3. Only verified merchant listings are collected, deduplicated, and stored as dated snapshots.
+4. Consecutive daily medians are tracked over time and rendered on an interactive SVG chart:
+   - 📈 **Rising** (> +1% change)
+   - 📉 **Falling** (< −1% change)
+   - ➖ **Stable** (within ±1%)
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
+- **Node.js 22.5 or newer** (**22.13+ recommended**). The backend utilizes the native `node:sqlite` module.
+- **npm** (bundled with Node.js).
 
-- **Node.js 22.5 or newer** (**22.13+ recommended**). The server uses the built-in `node:sqlite` module, which is not available in Node 18/20.
-- npm
-
-### Install & run
+### Installation & Launch
 
 ```bash
+# 1. Clone repository
 git clone https://github.com/<your-username>/Object_Memory.git
 cd Object_Memory
 
+# 2. Install dependencies
 npm install
-cp .env.example .env      # then edit .env (see Configuration)
+
+# 3. Configure environment variables
+cp .env.example .env
+
+# 4. Start concurrent development server
 npm run dev
 ```
 
-| Service | URL |
+| Service | Address |
 |---|---|
-| Web app | http://localhost:5173 |
-| API | http://localhost:5000 |
+| **Web Application** | [http://localhost:5173](http://localhost:5173) |
+| **API Server** | [http://localhost:5000](http://localhost:5000) |
+| **Health Check** | [http://localhost:5000/api/health](http://localhost:5000/api/health) |
 
-Prefer two terminals?
-
-```bash
-npm run server   # API on :5000
-npm run client   # Vite on :5173
-```
-
-### Demo account
-
-A demo user is created on first launch:
-
-| Email | Password |
-|---|---|
-| `demo@objectmemory.local` | `demo123` |
-
-> Change or delete this account before exposing the app to a network.
-
-### Production build
-
-```bash
-npm run build     # outputs to dist/
-npm start         # starts the API
-```
-
-> The Express server serves `/uploads` and the API. Serve the built `dist/` with a static host or reverse proxy of your choice.
+### Demo Credentials
+A demo profile is initialized automatically on first startup:
+- **Email:** `demo@objectmemory.local`
+- **Password:** `demo123`
 
 ---
 
-## Configuration
+## Configuration Reference
 
-Copy `.env.example` to `.env`:
+Create a `.env` file in the root directory:
 
-| Variable | Default | Description |
-|---|---|---|
-| `SERPAPI_KEY` | *(empty)* | Enables the Market tab. Get a key at [serpapi.com](https://serpapi.com). |
-| `MARKET_GL` | `in` | Google Shopping country code |
-| `MARKET_HL` | `en` | Interface language |
-| `MARKET_GOOGLE_DOMAIN` | `google.co.in` | Google domain to query |
-| `OBJECTMEMORY_JWT_SECRET` | dev fallback | **Set a long random string in any real deployment.** |
-| `PORT` | `5000` | API port |
+```env
+# Server Port
+PORT=5000
 
-Generate a strong secret:
+# Security (Set a strong 64-character random string for production)
+OBJECTMEMORY_JWT_SECRET=your_super_secret_jwt_key_here
 
+# Optional: Groq LLM API for advanced natural language inference
+GROQ_API_KEY=gsk_your_groq_api_key_here
+GROQ_MODEL=qwen/qwen3.8-27b
+
+# Optional: SerpApi for Google Shopping retail price tracking
+SERPAPI_KEY=your_serpapi_key_here
+MARKET_GL=in
+MARKET_HL=en
+MARKET_GOOGLE_DOMAIN=google.co.in
+```
+
+Generate a secure JWT secret:
 ```bash
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
-
-`.env` is git-ignored. Never commit real keys.
-
----
-
-## Market Trend Tracking
-
-Object Detail → **Market** → **Refresh market**.
-
-1. The server builds a query from `brand + model + title + subtitle`.
-2. It calls SerpApi's Google Shopping engine.
-3. Results are filtered: **new items only** (second-hand listings are dropped), positive prices, and titles that match the brand and every model token.
-4. Duplicates (same source and title) are removed, and up to **12 listings** are saved as a timestamped snapshot.
-5. Snapshots are grouped per day and reduced to the **daily median**.
-6. Trend is derived from first vs. latest daily median:
-
-| Change | Trend |
-|---|---|
-| > +1% | 📈 Rising |
-| < −1% | 📉 Falling |
-| within ±1% | ➖ Stable |
-| one day of data | Collecting history |
-
-**No fake history.** The first refresh creates the first data point, and a percentage appears once observations exist on at least two different days.
-
----
-
-## The Local AI Assistant
-
-ObjectMemory deliberately avoids a hosted LLM by default:
-
-- **Per-object chat** matches intent (condition, damage, purchase, warranty, serial, value, documents, timeline) and answers strictly from stored fields.
-- **Archive-wide assistant** reasons over all objects: soonest warranty expiries, recent incidents, new arrivals.
-- Value answers explicitly state they are *your recorded value*, not a market valuation.
-- **Zero cost, fully offline, and no hallucinations.**
-
-The `aiReply()` function in `server/index.js` is a clean integration point if you want to swap in a hosted LLM later.
 
 ---
 
 ## API Reference
 
-All routes except `/api/auth/register` and `/api/auth/login` require `Authorization: Bearer <token>`.
+All protected endpoints require an `Authorization: Bearer <token>` header.
 
-<details>
-<summary><b>Auth</b></summary>
+### Authentication & Health
+| Method | Endpoint | Description | Rate Limit |
+|---|---|---|---|
+| `GET` | `/api/health` | Service health status, database engine, uptime, and metrics | Unlimited |
+| `POST` | `/api/auth/register` | Create a new user account (`name`, `email`, `password` ≥ 6 chars) | 15 / 15 min |
+| `POST` | `/api/auth/login` | Authenticate and obtain JWT token (`email`, `password`) | 15 / 15 min |
+| `GET` | `/api/auth/me` | Fetch currently authenticated user profile | 120 / min |
 
+### Possessions & Timeline
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/auth/register` | Create account (`name`, `email`, `password` ≥ 6 chars) |
-| `POST` | `/api/auth/login` | Returns `{ token, user }` |
-| `GET` | `/api/auth/me` | Current user |
+| `GET` | `/api/objects?search=` | Search and list cataloged possessions |
+| `POST` | `/api/objects` | Create new possession record |
+| `GET` | `/api/objects/:id` | Fetch item details, timeline events, and documents |
+| `PUT` | `/api/objects/:id` | Update item details (records timeline event if condition changes) |
+| `DELETE` | `/api/objects/:id` | Permanently delete possession and cascading records |
+| `POST` | `/api/objects/:id/image` | Upload primary item photograph |
+| `POST` | `/api/objects/:id/events` | Log timeline event (`type`, `title`, `note`, `condition`) |
+| `POST` | `/api/objects/:id/events/:eventId/image` | Attach evidence photo to a specific timeline event |
 
-</details>
-
-<details>
-<summary><b>Objects & timeline</b></summary>
-
+### AI Intelligence & Dossiers
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/objects?search=` | List / search objects |
-| `POST` | `/api/objects` | Create object |
-| `GET` | `/api/objects/:id` | Object with events and documents |
-| `PUT` | `/api/objects/:id` | Update (logs an event if condition changes) |
-| `DELETE` | `/api/objects/:id` | Delete (cascades) |
-| `POST` | `/api/objects/:id/events` | Add timeline event (`note` / `damage` / `incident`) |
-| `POST` | `/api/objects/:id/image` | Set object photo |
-| `POST` | `/api/objects/:id/events/:eventId/image` | Attach photo to an event |
+| `POST` | `/api/archive/chat` | Query whole-platform copilot (`{ question, history }`) |
+| `POST` | `/api/objects/:id/chat` | Query possession-specific AI assistant (supports SSE streaming) |
+| `GET` | `/api/objects/:id/dossier` | Generate certified insurance claim dossier metadata |
 
-</details>
-
-<details>
-<summary><b>Documents, chat, market, dashboard</b></summary>
-
+### Documents, Market & Backups
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/objects/:id/documents` | Upload a document (multipart, ≤ 10 MB) |
-| `DELETE` | `/api/documents/:id` | Delete a document |
-| `GET` / `POST` | `/api/objects/:id/chat` | Read / send chat messages |
-| `GET` | `/api/objects/:id/market?refresh=1` | Market summary (`refresh=1` fetches a new snapshot) |
-| `GET` | `/api/dashboard` | Stats and recent activity |
-
-</details>
+| `POST` | `/api/objects/:id/documents` | Upload PDF or image document (max 10 MB) |
+| `DELETE` | `/api/documents/:id` | Delete document from disk and database |
+| `GET` | `/api/objects/:id/market?refresh=1` | Get price history / trigger fresh Google Shopping scrape |
+| `GET` | `/api/archive/export` | Download complete JSON vault backup |
+| `POST` | `/api/archive/import` | Restore vault from JSON backup |
+| `GET` | `/api/dashboard` | Portfolio statistics, recent activity, and warranty watchdog items |
 
 ---
 
@@ -285,67 +303,33 @@ All routes except `/api/auth/register` and `/api/auth/login` require `Authorizat
 ```text
 Object_Memory/
 ├── server/
-│   └── index.js          # Express API, SQLite schema, auth, market service, AI replies
+│   └── index.js             # Hardened Express API, SQLite WAL, Groq LLM, Auth, Market
 ├── src/
-│   ├── main.jsx          # React app: routes, pages, components, vision helper
-│   └── styles.css        # Editorial "archive" theme (Libre Baskerville + DM Mono)
-├── data/                 # SQLite database (auto-created, git-ignored)
-├── uploads/              # Uploaded images & documents (git-ignored)
-├── index.html
-├── vite.config.js        # Dev proxy for /api and /uploads
-├── .env.example
-└── package.json
+│   ├── components/
+│   │   ├── InsuranceDossierModal.jsx  # Print-ready official certified claim dossier
+│   │   ├── MarkdownView.jsx           # Robust GitHub Flavored Markdown renderer
+│   │   ├── Toast.jsx                  # Interactive toast notification system
+│   │   └── WarrantyBadge.jsx          # Real-time countdown urgency badges
+│   ├── utils/
+│   │   └── vision.js                  # Lazy-loaded in-browser TensorFlow.js MobileNet v2
+│   ├── main.jsx                       # Application routing, views, and state management
+│   └── styles.css                     # Editorial design system (Plus Jakarta Sans + Baskerville)
+├── data/                    # SQLite database (auto-created in WAL mode, git-ignored)
+├── uploads/                 # Uploaded files and photos (UUID mapped, git-ignored)
+├── index.html               # Main HTML entrypoint
+├── vite.config.js           # Vite configuration & API proxy
+└── package.json             # Scripts & dependencies
 ```
 
-### Routes
-
-| Path | Page |
-|---|---|
-| `/login` | Sign in / register |
-| `/` | Dashboard |
-| `/archive` | Searchable archive |
-| `/objects/new` | Add object (with photo detection) |
-| `/objects/:id` | Detail: Overview · Timeline · Documents · Market · Ask AI |
-| `/incident` | Report damage or change |
-| `/settings` | Account & logout |
-
 ---
 
-## Security Notes
+## Production Deployment
 
-- Passwords are hashed with **bcrypt**, and sessions are signed **JWTs** (7-day expiry).
-- Every query is scoped to `user_id`, so users cannot read each other's objects.
-- Uploads are stored under random UUID names, with a 10 MB cap. Image endpoints reject non-image MIME types.
-- Before deploying publicly: set a strong `OBJECTMEMORY_JWT_SECRET`, remove the demo user, restrict CORS to your origin, and serve over HTTPS.
-
----
-
-## Resetting the Database
-
-Stop the server, then delete `data/objectmemory.sqlite*` and restart. Schema and the demo user are recreated automatically.
-
----
-
-## Roadmap
-
-- [ ] Optional hosted-LLM adapter behind the existing `aiReply()` hook
-- [ ] Export archive as PDF or CSV (insurance-ready report)
-- [ ] Warranty-expiry reminders and notifications
-- [ ] Multi-currency market data
-- [ ] Docker image and one-command deploy
-- [ ] Automated tests (API and UI)
-- [ ] Split `main.jsx` into modules
-
----
-
-## Contributing
-
-Contributions are welcome.
-
-1. Fork the repo
-2. Create a branch: `git checkout -b feature/amazing-idea`
-3. Commit and push
-4. Open a Pull Request
+Build the optimized client bundle:
+```bash
+npm run build
+```
+Vite outputs minified assets to the `dist/` directory in under 400ms. Serve `dist/` using Nginx, Caddy, or your preferred static hosting platform, with requests to `/api` and `/uploads` reverse-proxied to `http://localhost:5000`.
 
 ---
 
@@ -355,6 +339,6 @@ Released under the **MIT License**. See `LICENSE` for details.
 
 <div align="center">
 
-**ObjectMemory**: because everything you own has a story.
+**ObjectMemory**: Because everything you own has a story.
 
 </div>
