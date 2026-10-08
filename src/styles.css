@@ -331,14 +331,15 @@
 .msg.assistantMsg {
   align-self: flex-start;
   width: 100%;
-  max-width: 95%;
+  max-width: 100%;
   background: #ffffff;
   color: #171614;
   border: 1px solid #ded5c7;
   border-left: 3px solid #b85e45;
-  border-radius: 12px 12px 12px 3px;
+  border-radius: 12px;
   padding: 16px 20px;
   box-shadow: 0 4px 16px rgba(45, 39, 31, 0.04);
+  box-sizing: border-box;
 }
 
 .assistantHeader {
@@ -414,7 +415,7 @@
   font: 700 13px 'Libre Baskerville', Georgia, serif;
   color: #171614;
   margin: 14px 0 8px;
-  padding-bottom: 3px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #f0ebe2;
 }
 
@@ -429,16 +430,27 @@
 }
 
 .markdownBody ul, .markdownBody ol {
-  margin: 6px 0 12px;
-  padding-left: 22px;
+  margin: 8px 0 12px;
+  padding-left: 20px;
 }
 
 .markdownBody li {
-  margin-bottom: 5px;
+  margin-bottom: 7px;
+  line-height: 1.65;
 }
 
 .markdownBody li:last-child {
   margin-bottom: 0;
+}
+
+.markdownBody li > p {
+  margin: 0;
+  display: inline;
+}
+
+.markdownBody li > p + p {
+  margin-top: 6px;
+  display: block;
 }
 
 .markdownBody strong {
